@@ -1,0 +1,19 @@
+# .gitignore
+
+# 1. 가상환경 (Virtual Environment)
+venv/
+.venv/
+
+# 2. 파이썬 캐시 (Python Cache)
+__pycache__/
+*.pyc
+
+# 3. 민감 정보 (Secrets)
+.env
+
+# 4. 개발 도구 설정 (IDE Settings)
+.vscode/
+.idea/
+
+# 5. 운영체제 파일 (OS Files)
+.DS_Store

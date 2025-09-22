@@ -1,0 +1,16 @@
+# requirements.txt
+
+# Core Server
+fastapi
+uvicorn[standard]
+
+# Vector DB
+chromadb
+
+# Relational DB (MySQL)
+SQLAlchemy
+mysqlclient
+
+# Utilities
+pydantic
+python-dotenv
