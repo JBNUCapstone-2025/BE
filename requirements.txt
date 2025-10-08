@@ -9,8 +9,14 @@ chromadb
 
 # Relational DB (MySQL)
 SQLAlchemy
-mysqlclient
+pymysql
 
 # Utilities
 pydantic
+pydantic[email]
 python-dotenv
+
+# Authentication
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart

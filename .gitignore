@@ -17,3 +17,6 @@ __pycache__/
 
 # 5. 운영체제 파일 (OS Files)
 .DS_Store
+
+# 6. Claude 문서 (Claude Documents)
+CLAUDE.md
