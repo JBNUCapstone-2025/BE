@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 
-# Role Enum
+# 권한 Enum
 class RoleEnum(str, Enum):
     admin = "admin"
     member = "member"
@@ -54,7 +54,7 @@ class UserResponse(BaseModel):
     role: RoleEnum
 
     class Config:
-        from_attributes = True  # SQLAlchemy 모델을 Pydantic 모델로 변환 가능
+        from_attributes = True  # SQLAlchemy 모델을 Pydantic 모델로 변환
 
 
 # 회원가입 응답 스키마

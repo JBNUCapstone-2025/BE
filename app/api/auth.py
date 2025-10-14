@@ -16,7 +16,7 @@ def signup(user: UserSignupRequest, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+            detail="이미 사용 중인 아이디입니다"
         )
 
     # 이미 존재하는 email인지 확인
@@ -24,7 +24,7 @@ def signup(user: UserSignupRequest, db: Session = Depends(get_db)):
     if existing_email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            detail="이미 사용 중인 이메일입니다"
         )
 
     # 이미 존재하는 nickname인지 확인
@@ -32,7 +32,7 @@ def signup(user: UserSignupRequest, db: Session = Depends(get_db)):
     if existing_nickname:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nickname already registered"
+            detail="이미 사용 중인 닉네임입니다"
         )
 
     # 유저 생성
@@ -48,14 +48,14 @@ def login(user_login: UserLoginRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password"
+            detail="아이디 또는 비밀번호가 올바르지 않습니다"
         )
 
     # 비밀번호 검증
     if not verify_password(user_login.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password"
+            detail="아이디 또는 비밀번호가 올바르지 않습니다"
         )
 
     # JWT 토큰 생성

@@ -1,6 +1,6 @@
 # app/main.py
 from fastapi import FastAPI
-from app.api import auth
+from app.api import auth, diary
 
 # FastAPI 앱(서버) 인스턴스 생성
 app = FastAPI(
@@ -11,6 +11,7 @@ app = FastAPI(
 
 # 라우터 등록
 app.include_router(auth.router)
+app.include_router(diary.router)
 
 
 # 루트 경로("/")로 GET 요청이 들어왔을 때 실행될 함수 정의
