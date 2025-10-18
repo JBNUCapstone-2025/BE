@@ -1,22 +1,29 @@
 # requirements.txt
 
-# Core Server
+# Web Framework
 fastapi
 uvicorn[standard]
 
-# Vector DB
-chromadb
-
-# Relational DB (MySQL)
+# Database - Relational (MySQL)
 SQLAlchemy
 pymysql
 
-# Utilities
+# Database - Vector
+chromadb
+faiss-cpu
+
+# Validation & Configuration
 pydantic
 pydantic[email]
+pydantic-settings
 python-dotenv
 
-# Authentication
+# Authentication & Security
 passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
+
+# AI & ML
+openai
+google-generativeai
+numpy

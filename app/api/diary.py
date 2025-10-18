@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List
-from app.db.database import get_db
+from app.core.deps import get_db, get_current_user_id
 from app.schemas.diary import (
     DiaryCreateRequest, DiaryCreateResponse, DiaryResponse,
     DiaryUpdateRequest, DiaryListResponse, DiaryCalendarResponse
@@ -13,28 +12,8 @@ from app.crud.diary import (
     get_diaries_by_user, get_diaries_by_month,
     update_diary, delete_diary
 )
-from app.services.auth import verify_token
 
 router = APIRouter(prefix="/diary", tags=["Diary"])
-security = HTTPBearer()
-
-
-def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
-    """JWT 토큰에서 현재 사용자 ID 추출"""
-    token = credentials.credentials
-    payload = verify_token(token)
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="유효하지 않거나 만료된 토큰입니다"
-        )
-    user_id = payload.get("userId")
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="토큰 페이로드가 유효하지 않습니다"
-        )
-    return user_id
 
 
 @router.post("/", response_model=DiaryCreateResponse, status_code=status.HTTP_201_CREATED)

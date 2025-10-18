@@ -31,6 +31,9 @@ class User(Base):
     # 감정 데이터 (월별 결산용 JSON 형식)
     emotion = Column(JSON, nullable=True)
 
+    # 선택한 캐릭터 (강아지, 고양이, 곰, 너구리, 토끼, 햄스터, 여우)
+    character = Column(String(20), nullable=True)
+
     # 권한
     role = Column(Enum(UserRole), default=UserRole.MEMBER, nullable=False)
 

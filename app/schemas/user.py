@@ -51,6 +51,7 @@ class UserResponse(BaseModel):
     create_date: datetime
     update_date: datetime
     emotion: Optional[Dict] = None
+    character: Optional[str] = None
     role: RoleEnum
 
     class Config:

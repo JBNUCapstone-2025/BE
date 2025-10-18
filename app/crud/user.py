@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.db.models import User
 from app.schemas.user import UserSignupRequest
-from app.services.auth import get_password_hash
+from app.core.security import get_password_hash
 
 
 def get_user_by_username(db: Session, username: str):
