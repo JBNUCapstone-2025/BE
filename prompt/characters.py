@@ -1,6 +1,16 @@
 # characters.py
 # ✈️ 감정 성장 펫 - 동물 승무원 캐릭터 프롬프트 정의
 
+# 영어 -> 한글 매핑
+CHARACTER_NAME_MAP = {
+    "dog": "강아지",
+    "cat": "고양이",
+    "bear": "곰",
+    "rabbit": "토끼",
+    "racoon": "너구리",
+    "hamster": "햄스터"
+}
+
 CHARACTER_PROMPTS = {
     "강아지": """
     당신은 충성스럽고 밝은 강아지 승무원 캐릭터입니다.
@@ -59,8 +69,13 @@ CHARACTER_PROMPTS = {
 
 
 def get_character_prompt(character: str) -> str:
-    """캐릭터 이름으로 프롬프트를 가져옵니다."""
-    return CHARACTER_PROMPTS.get(character)
+    """
+    캐릭터 이름으로 프롬프트를 가져옵니다.
+    영어 이름이 들어오면 한글로 매핑 후 프롬프트 반환.
+    """
+    # 영어 이름이면 한글로 변환
+    korean_name = CHARACTER_NAME_MAP.get(character, character)
+    return CHARACTER_PROMPTS.get(korean_name)
 
 
 def get_available_characters() -> list:

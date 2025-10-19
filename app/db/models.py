@@ -55,8 +55,8 @@ class Diary(Base):
     content = Column(Text, nullable=False)
 
     # AI 분석 결과 (AI API 연동 전까지 null)
-    emotion = Column(JSON, nullable=True)  # {"기쁨": 0.8, "설렘": 0.3}
-    recommend_content = Column(JSON, nullable=True)  # {"책": [...], "음악": [...]}
+    emotion = Column(String(20), nullable=True)  # "기쁨", "슬픔", "분노", "불안", "설렘", "무기력"
+    recommend_content = Column(JSON, nullable=True)  # {"도서": [...], "음악": [...], "식사": [...]}
 
     # 일기 날짜 (달력 표시용)
     diary_date = Column(Date, nullable=False, index=True)

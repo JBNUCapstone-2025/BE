@@ -23,8 +23,8 @@ class DiaryResponse(BaseModel):
     user_id: int
     title: str
     content: str
-    emotion: Optional[Dict[str, float]] = None  # AI 분석 감정 결과
-    recommend_content: Optional[Dict[str, List[Any]]] = None  # AI 추천 콘텐츠
+    emotion: Optional[str] = Field(None, description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 무기력)")
+    recommend_content: Optional[Dict[str, List[Any]]] = Field(None, description="AI 추천 콘텐츠 (도서, 음악, 식사)")
     diary_date: date
     create_date: datetime
     update_date: datetime
@@ -37,7 +37,7 @@ class DiaryResponse(BaseModel):
 class DiaryListResponse(BaseModel):
     diary_id: int
     title: str
-    emotion: Optional[Dict[str, float]] = None
+    emotion: Optional[str] = None
     diary_date: date
     create_date: datetime
 

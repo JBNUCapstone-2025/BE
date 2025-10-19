@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # API 라우터 import
-from app.api import auth, diary, chat
+from app.api import auth, diary, chat, user
 
 app = FastAPI(
     title="ICSYF AI Integrated API",
@@ -29,6 +29,7 @@ app.add_middleware(
 
 # API 라우터 등록
 app.include_router(auth.router)
+app.include_router(user.router)
 app.include_router(diary.router)
 app.include_router(chat.router)
 
