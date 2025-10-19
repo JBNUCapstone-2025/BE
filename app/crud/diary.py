@@ -13,7 +13,9 @@ def create_diary(db: Session, user_id: int, diary: DiaryCreateRequest) -> Diary:
             user_id=user_id,
             title=diary.title,
             content=diary.content,
-            diary_date=diary.diary_date
+            diary_date=diary.diary_date,
+            emotion=diary.emotion,
+            recommend_content=diary.recommend_content
         )
         db.add(db_diary)
         db.commit()
