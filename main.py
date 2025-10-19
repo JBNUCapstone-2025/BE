@@ -16,10 +16,12 @@ origins = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    # 프로덕션 환경 추가
+    "http://175.123.55.182:7777",  # 서버 IP
 ]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # 모든 origin 허용 (개발 중)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

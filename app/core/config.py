@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from urllib.parse import quote_plus
 
 
 class Settings(BaseSettings):
@@ -24,10 +25,25 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     GOOGLE_API_KEY: Optional[str] = None
 
+    # Database Connection Pool Configuration
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_RECYCLE: int = 3600  # 1 hour
+
+    # Environment Configuration
+    ENVIRONMENT: str = "development"  # development, production
+
+    @property
+    def is_production(self) -> bool:
+        """프로덕션 환경 여부 확인"""
+        return self.ENVIRONMENT.lower() == "production"
+
     # Database URL 생성
     @property
     def database_url(self) -> str:
-        return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
+        # 비밀번호에 특수문자가 있을 경우 URL 인코딩
+        encoded_password = quote_plus(self.DB_PASSWORD)
+        return f"mysql+pymysql://{self.DB_USER}:{encoded_password}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
 
     class Config:
         env_file = ".env"
