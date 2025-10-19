@@ -3,37 +3,34 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_db
 from app.core.security import verify_password, create_access_token
 from app.schemas.user import UserSignupRequest, UserSignupResponse, UserLoginRequest, UserLoginResponse
-from app.crud.user import create_user, get_user_by_username, get_user_by_email, get_user_by_nickname
+from app.crud.user import create_user, get_user_by_username, check_duplicate_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/signup", response_model=UserSignupResponse, status_code=status.HTTP_201_CREATED)
 def signup(user: UserSignupRequest, db: Session = Depends(get_db)):
-    """회원가입"""
-    # 이미 존재하는 username인지 확인
-    existing_user = get_user_by_username(db, user.username)
+    """회원가입 - 최적화된 중복 체크 (3쿼리 → 1쿼리)"""
+    # 중복 체크 (1번의 쿼리로 username, email, nickname 동시 검증)
+    existing_user = check_duplicate_user(db, user.username, user.email, user.nick_name)
+
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 사용 중인 아이디입니다"
-        )
-
-    # 이미 존재하는 email인지 확인
-    existing_email = get_user_by_email(db, user.email)
-    if existing_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 사용 중인 이메일입니다"
-        )
-
-    # 이미 존재하는 nickname인지 확인
-    existing_nickname = get_user_by_nickname(db, user.nick_name)
-    if existing_nickname:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 사용 중인 닉네임입니다"
-        )
+        # 어떤 필드가 중복되었는지 확인하여 구체적인 에러 메시지 제공
+        if existing_user.username == user.username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 사용 중인 아이디입니다"
+            )
+        elif existing_user.email == user.email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 사용 중인 이메일입니다"
+            )
+        elif existing_user.nick_name == user.nick_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 사용 중인 닉네임입니다"
+            )
 
     # 유저 생성
     new_user = create_user(db, user)

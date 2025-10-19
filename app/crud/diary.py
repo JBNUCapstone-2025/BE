@@ -8,16 +8,20 @@ from typing import List, Optional
 
 def create_diary(db: Session, user_id: int, diary: DiaryCreateRequest) -> Diary:
     """일기 생성"""
-    db_diary = Diary(
-        user_id=user_id,
-        title=diary.title,
-        content=diary.content,
-        diary_date=diary.diary_date
-    )
-    db.add(db_diary)
-    db.commit()
-    db.refresh(db_diary)
-    return db_diary
+    try:
+        db_diary = Diary(
+            user_id=user_id,
+            title=diary.title,
+            content=diary.content,
+            diary_date=diary.diary_date
+        )
+        db.add(db_diary)
+        db.commit()
+        db.refresh(db_diary)
+        return db_diary
+    except Exception as e:
+        db.rollback()
+        raise
 
 
 def get_diary_by_id(db: Session, diary_id: int, user_id: int) -> Optional[Diary]:
@@ -54,29 +58,37 @@ def get_diaries_by_month(db: Session, user_id: int, year: int, month: int) -> Li
 
 def update_diary(db: Session, diary_id: int, user_id: int, diary_update: DiaryUpdateRequest) -> Optional[Diary]:
     """일기 수정"""
-    db_diary = get_diary_by_id(db, diary_id, user_id)
-    if not db_diary:
-        return None
+    try:
+        db_diary = get_diary_by_id(db, diary_id, user_id)
+        if not db_diary:
+            return None
 
-    # 수정할 필드만 업데이트
-    if diary_update.title is not None:
-        db_diary.title = diary_update.title
-    if diary_update.content is not None:
-        db_diary.content = diary_update.content
-    if diary_update.diary_date is not None:
-        db_diary.diary_date = diary_update.diary_date
+        # 수정할 필드만 업데이트
+        if diary_update.title is not None:
+            db_diary.title = diary_update.title
+        if diary_update.content is not None:
+            db_diary.content = diary_update.content
+        if diary_update.diary_date is not None:
+            db_diary.diary_date = diary_update.diary_date
 
-    db.commit()
-    db.refresh(db_diary)
-    return db_diary
+        db.commit()
+        db.refresh(db_diary)
+        return db_diary
+    except Exception as e:
+        db.rollback()
+        raise
 
 
 def delete_diary(db: Session, diary_id: int, user_id: int) -> bool:
     """일기 삭제"""
-    db_diary = get_diary_by_id(db, diary_id, user_id)
-    if not db_diary:
-        return False
+    try:
+        db_diary = get_diary_by_id(db, diary_id, user_id)
+        if not db_diary:
+            return False
 
-    db.delete(db_diary)
-    db.commit()
-    return True
+        db.delete(db_diary)
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        raise
