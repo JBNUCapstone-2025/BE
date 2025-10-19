@@ -151,7 +151,7 @@ PATCH /user/character   - 캐릭터 변경 (JWT 필수)
 
 ### 일기 API
 ```
-POST   /diary/                        - 일기 작성
+POST   /diary/                        - 일기 작성 (emotion, recommend_content 선택적)
 GET    /diary/list                    - 일기 목록 (페이징)
 GET    /diary/calendar/{year}/{month} - 월별 일기
 GET    /diary/by-date/{diary_date}    - 특정 날짜 일기
@@ -203,7 +203,7 @@ curl -X PATCH http://localhost:8000/user/character \
   -d '{"character": "dog"}'
 ```
 
-### 4. 일기 작성
+### 4. 일기 작성 (기본)
 ```bash
 curl -X POST http://localhost:8000/diary/ \
   -H "Authorization: Bearer {JWT_TOKEN}" \
@@ -212,6 +212,24 @@ curl -X POST http://localhost:8000/diary/ \
     "title": "오늘의 일기",
     "content": "오늘은 정말 행복한 하루였다.",
     "diary_date": "2025-10-19"
+  }'
+```
+
+### 4-1. 일기 작성 (AI 분석 결과 포함)
+```bash
+curl -X POST http://localhost:8000/diary/ \
+  -H "Authorization: Bearer {JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "오늘의 일기",
+    "content": "오늘은 정말 행복한 하루였다.",
+    "diary_date": "2025-10-19",
+    "emotion": "기쁨",
+    "recommend_content": {
+      "도서": [{"title": "행복한 책", "author": "작가"}],
+      "음악": [{"title": "좋은 노래", "artist": "가수"}],
+      "식사": [{"name": "맛있는 음식", "description": "설명"}]
+    }
   }'
 ```
 
@@ -266,6 +284,8 @@ docker-compose down
 - DB 연결 풀 (pool_size=10, max_overflow=20)
 - 중복 체크 쿼리 최적화 (3쿼리 → 1쿼리)
 - 에러 처리 완비 (모든 API/CRUD)
+- emotion 검증 (6가지 감정만 허용)
+- recommend_content 검증 (3가지 카테고리만 허용)
 
 ### AI 통합
 - OpenAI API 감정 분석
