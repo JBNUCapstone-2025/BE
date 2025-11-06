@@ -31,7 +31,11 @@ def update_profile(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ):
-    """사용자 프로필 업데이트"""
+    """사용자 프로필 업데이트
+
+    비밀번호 변경 안 할 시: current_password, new_password 필드 제외 (null 또는 생략)
+    """
+
     user = db.query(User).filter(User.user_id == user_id).first()
 
     if not user:
