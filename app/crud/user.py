@@ -47,7 +47,9 @@ def create_user(db: Session, user_data: UserSignupRequest):
             person_name=user_data.person_name,
             nick_name=user_data.nick_name,
             email=user_data.email,
-            phone=user_data.phone
+            phone=user_data.phone,
+            birth=user_data.birth,
+            gender=user_data.gender
         )
 
         db.add(db_user)

@@ -8,6 +8,10 @@ class UserRole(str, enum.Enum):
     ADMIN = "admin"
     MEMBER = "member"
 
+class Gender(str, enum.Enum):
+    MALE = "male"
+    FEMALE = "female"
+
 class User(Base):
     __tablename__ = "User"
 
@@ -23,6 +27,8 @@ class User(Base):
     nick_name = Column(String(50), unique=True, nullable=False, index=True)
     email = Column(String(100), unique=True, nullable=False, index=True)
     phone = Column(String(20), nullable=False)
+    birth = Column(Date, nullable=False)
+    gender = Column(Enum(Gender), nullable=False)
 
     # 타임스탬프
     create_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -33,6 +39,7 @@ class User(Base):
 
     # 선택한 캐릭터 (강아지, 고양이, 곰, 너구리, 토끼, 햄스터, 여우)
     character = Column(String(20), nullable=True)
+    character_name = Column(String(20), nullable=True)  # 사용자가 캐릭터에게 붙이는 이름
 
     # 권한
     role = Column(Enum(UserRole), default=UserRole.MEMBER, nullable=False)

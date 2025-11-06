@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.core.deps import get_db
+from app.core.deps import get_db, get_current_user_id
 from app.core.security import verify_password, create_access_token
 from app.schemas.user import UserSignupRequest, UserSignupResponse, UserLoginRequest, UserLoginResponse
 from app.crud.user import create_user, get_user_by_username, check_duplicate_user
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/signup", response_model=UserSignupResponse, status_code=status.HTTP_201_CREATED)
 def signup(user: UserSignupRequest, db: Session = Depends(get_db)):
-    """회원가입 - 최적화된 중복 체크 (3쿼리 → 1쿼리)"""
+    """회원가입"""
     # 중복 체크 (1번의 쿼리로 username, email, nickname 동시 검증)
     existing_user = check_duplicate_user(db, user.username, user.email, user.nick_name)
 
@@ -62,4 +62,17 @@ def login(user_login: UserLoginRequest, db: Session = Depends(get_db)):
         "access_token": access_token,
         "token_type": "bearer",
         "user": user
+    }
+
+
+@router.post("/logout")
+def logout(user_id: int = Depends(get_current_user_id)):
+    """로그아웃
+
+    JWT 기반 인증에서는 서버에서 토큰을 무효화할 수 없습니다.
+    클라이언트에서 토큰을 삭제하여 로그아웃을 처리하세요.
+    """
+    return {
+        "message": "로그아웃되었습니다",
+        "detail": "클라이언트에서 토큰을 삭제해주세요"
     }

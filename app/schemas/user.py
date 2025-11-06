@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, Dict
-from datetime import datetime
+from datetime import datetime, date
 from enum import Enum
 
 
@@ -10,14 +10,22 @@ class RoleEnum(str, Enum):
     member = "member"
 
 
+# 성별 Enum
+class GenderEnum(str, Enum):
+    male = "male"
+    female = "female"
+
+
 # 회원가입 요청 스키마
 class UserSignupRequest(BaseModel):
     username: str = Field(..., min_length=4, max_length=50, description="로그인 ID")
     password: str = Field(..., min_length=8, description="로그인 비밀번호")
     person_name: str = Field(..., min_length=2, max_length=50, description="사람 이름")
-    nick_name: str = Field(..., min_length=2, max_length=50, description="닉네임")
+    nick_name: str = Field(..., min_length=2, max_length=8, description="닉네임")
     email: EmailStr = Field(..., description="이메일")
     phone: str = Field(..., pattern=r'^010-\d{4}-\d{4}$', description="휴대폰 번호 (010-1234-5678)")
+    birth: date = Field(..., description="생년월일 (YYYY-MM-DD)")
+    gender: GenderEnum = Field(..., description="성별 (남: male, 여: female)")
 
     @field_validator('password')
     @classmethod
@@ -48,10 +56,13 @@ class UserResponse(BaseModel):
     nick_name: str
     email: str
     phone: str
+    birth: date
+    gender: GenderEnum
     create_date: datetime
     update_date: datetime
     emotion: Optional[Dict] = None
     character: Optional[str] = None
+    character_name: Optional[str] = None
     role: RoleEnum
 
     class Config:
@@ -64,9 +75,29 @@ class UserSignupResponse(BaseModel):
     user: UserResponse
 
 
+# 프로필 업데이트 요청 스키마
+class UserProfileUpdateRequest(BaseModel):
+    person_name: str = Field(..., min_length=2, max_length=50, description="사람 이름")
+    nick_name: str = Field(..., min_length=2, max_length=8, description="닉네임")
+    phone: str = Field(..., pattern=r'^010-\d{4}-\d{4}$', description="휴대폰 번호 (010-1234-5678)")
+    birth: date = Field(..., description="생년월일 (YYYY-MM-DD)")
+    gender: GenderEnum = Field(..., description="성별 (남: male, 여: female)")
+    current_password: Optional[str] = Field(None, description="현재 비밀번호 (비밀번호 변경 시 필수)")
+    new_password: Optional[str] = Field(None, min_length=8, description="새 비밀번호 (변경 시에만 입력)")
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password_change(cls, v, info):
+        # new_password가 있으면 current_password도 필수
+        if v is not None and info.data.get('current_password') is None:
+            raise ValueError('비밀번호를 변경하려면 현재 비밀번호를 입력해야 합니다')
+        return v
+
+
 # 캐릭터 업데이트 요청 스키마
 class CharacterUpdateRequest(BaseModel):
     character: str = Field(..., description="선택한 캐릭터 (dog, cat, bear, rabbit, racoon, hamster)")
+    character_name: str = Field(..., min_length=2, max_length=8, description="캐릭터 이름")
 
     @field_validator('character')
     @classmethod
