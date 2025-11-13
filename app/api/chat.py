@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 import openai
-from typing import Optional
+from typing import Optional, List
 
 # AI 핵심 기능 import
 from ai_core.llm import (
@@ -14,7 +16,26 @@ from ai_core.llm import (
 from ai_core.vector_db import find_dissimilar_emotion_key
 from ai_core.recommendation import format_recommendation, get_smart_recommendation
 
+# DB 및 스키마 import
+from app.core.deps import get_db, get_current_user_id
+from app.crud import chat as chat_crud
+from app.schemas.chat import (
+    ChatCreateRequest,
+    ChatCreateResponse,
+    ChatResponse,
+    ChatListResponse,
+    ChatDetailResponse,
+    ChatUpdateTitleRequest,
+    ChatCompleteRequest,
+    MessageCreateRequest,
+    MessageCreateResponse
+)
+
+# AI 기능 라우터
 router = APIRouter(prefix="/api", tags=["AI Chat & Recommendation"])
+
+# CRUD 라우터
+chat_router = APIRouter(prefix="/chat", tags=["Chat CRUD"])
 
 
 class ChatRequest(BaseModel):
@@ -245,4 +266,241 @@ async def analyze_diary(request: DiaryAnalysisRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"일기 분석 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+# ================== Chat CRUD 엔드포인트 ==================
+
+@chat_router.post("/start", response_model=ChatCreateResponse, status_code=status.HTTP_201_CREATED)
+def start_chat(
+    chat_data: ChatCreateRequest,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    대화방 생성
+    - title 없으면 "새 대화"로 자동 생성
+    """
+    try:
+        db_chat = chat_crud.create_chat(db, user_id, chat_data)
+        return ChatCreateResponse(
+            message="대화방이 생성되었습니다",
+            chat=ChatResponse.model_validate(db_chat)
+        )
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"대화 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@chat_router.get("/list", response_model=List[ChatListResponse])
+def get_chat_list(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    대화 목록 조회 (최근 대화순)
+    - skip: 건너뛸 개수 (기본값: 0)
+    - limit: 최대 조회 개수 (기본값: 100, 최대: 1000)
+    """
+    try:
+        if skip < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="skip은 0 이상이어야 합니다"
+            )
+        if limit < 1 or limit > 1000:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="limit은 1~1000 사이여야 합니다"
+            )
+
+        chats = chat_crud.get_chats_by_user(db, user_id, skip, limit)
+        return [ChatListResponse.model_validate(chat) for chat in chats]
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"대화 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@chat_router.get("/{chat_id}", response_model=ChatDetailResponse)
+def get_chat_detail(
+    chat_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    대화 상세 조회 (메시지 포함)
+    """
+    try:
+        db_chat = chat_crud.get_chat_by_id(db, chat_id, user_id)
+        if not db_chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="해당 대화를 찾을 수 없습니다"
+            )
+
+        return ChatDetailResponse.model_validate(db_chat)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"대화 조회 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@chat_router.patch("/{chat_id}/title", response_model=ChatResponse)
+def update_chat_title(
+    chat_id: int,
+    title_data: ChatUpdateTitleRequest,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    대화 제목 수정
+    """
+    try:
+        db_chat = chat_crud.update_chat_title(db, chat_id, user_id, title_data)
+        if not db_chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="해당 대화를 찾을 수 없습니다"
+            )
+
+        return ChatResponse.model_validate(db_chat)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"제목 수정 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@chat_router.patch("/{chat_id}/complete", response_model=ChatResponse)
+def complete_chat(
+    chat_id: int,
+    complete_data: ChatCompleteRequest,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    대화 종료 시 감정 분석 결과 및 추천 콘텐츠 저장
+    """
+    try:
+        db_chat = chat_crud.update_chat_complete(db, chat_id, user_id, complete_data)
+        if not db_chat:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="해당 대화를 찾을 수 없습니다"
+            )
+
+        return ChatResponse.model_validate(db_chat)
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"대화 완료 처리 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@chat_router.delete("/{chat_id}", status_code=status.HTTP_200_OK)
+def delete_chat(
+    chat_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    대화 삭제 (하드 삭제)
+    """
+    try:
+        success = chat_crud.delete_chat(db, chat_id, user_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="해당 대화를 찾을 수 없습니다"
+            )
+
+        return {"message": "대화가 삭제되었습니다"}
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"대화 삭제 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@chat_router.post("/{chat_id}/message", response_model=MessageCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_message(
+    chat_id: int,
+    message_data: MessageCreateRequest,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    메시지 저장
+    - user_message, bot_response, character, character_name 모두 필수
+    """
+    try:
+        db_message = chat_crud.create_message(db, chat_id, user_id, message_data)
+        if not db_message:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="해당 대화를 찾을 수 없습니다"
+            )
+
+        return MessageCreateResponse(
+            message="메시지가 저장되었습니다",
+            data=db_message
+        )
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"메시지 저장 중 오류가 발생했습니다: {str(e)}"
         )

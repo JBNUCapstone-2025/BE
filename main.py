@@ -32,6 +32,7 @@ app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(diary.router)
 app.include_router(chat.router)
+app.include_router(chat.chat_router)  # Chat CRUD 라우터
 
 
 @app.get("/")

@@ -25,7 +25,13 @@ FastAPI 기반으로 구축된 AI 통합 백엔드 시스템입니다.
 - 실시간 감정 분석 (OpenAI API)
 - 캐릭터별 맞춤 말투
 
-### 4. AI 추천 시스템
+### 4. 챗봇 대화 저장
+- 대화방 생성 및 관리 (CRUD)
+- 메시지 이력 저장 및 조회
+- 캐릭터 변경 이력 추적
+- 대화 종료 시 감정 분석 결과 저장
+
+### 5. AI 추천 시스템
 - RAG 기반 스마트 추천 (도서, 음악, 식사)
 - FAISS 벡터 DB 활용
 - 감정 기반 반대 감정 찾기
@@ -59,16 +65,18 @@ BE/
 │   │   ├── auth.py          # 회원가입, 로그인
 │   │   ├── user.py          # 프로필, 캐릭터 설정
 │   │   ├── diary.py         # 감정 일기 CRUD
-│   │   └── chat.py          # AI 챗봇, 추천
+│   │   └── chat.py          # AI 챗봇, 추천, 대화 CRUD
 │   ├── crud/                # Database CRUD 로직
 │   │   ├── user.py
-│   │   └── diary.py
+│   │   ├── diary.py
+│   │   └── chat.py
 │   ├── db/                  # Database 설정
 │   │   ├── database.py      # DB 연결 및 세션
-│   │   └── models.py        # SQLAlchemy 모델
+│   │   └── models.py        # SQLAlchemy 모델 (User, Diary, Chat, Message)
 │   └── schemas/             # Pydantic 스키마
 │       ├── user.py
-│       └── diary.py
+│       ├── diary.py
+│       └── chat.py
 ├── ai_core/                 # AI 핵심 기능
 │   ├── llm.py               # OpenAI API
 │   ├── vector_db.py         # FAISS 벡터 DB
@@ -146,6 +154,7 @@ POST /auth/login     - 로그인 (JWT 토큰 반환)
 ### 사용자 프로필 API
 ```
 GET   /user/profile     - 프로필 조회 (JWT 필수)
+PATCH /user/profile     - 프로필 수정 (JWT 필수)
 PATCH /user/character   - 캐릭터 변경 (JWT 필수)
 ```
 
@@ -158,6 +167,17 @@ GET    /diary/by-date/{diary_date}    - 특정 날짜 일기
 GET    /diary/{diary_id}              - 일기 상세 조회
 PUT    /diary/{diary_id}              - 일기 수정
 DELETE /diary/{diary_id}              - 일기 삭제
+```
+
+### 챗봇 대화 API
+```
+POST   /chat/start                  - 대화방 생성
+GET    /chat/list                   - 대화 목록 (최근 활동순)
+GET    /chat/{chat_id}              - 대화 상세 조회 (메시지 포함)
+PATCH  /chat/{chat_id}/title        - 제목 수정
+PATCH  /chat/{chat_id}/complete     - 대화 종료 (감정/추천 저장)
+DELETE /chat/{chat_id}              - 대화 삭제
+POST   /chat/{chat_id}/message      - 메시지 저장
 ```
 
 ### AI API
@@ -181,7 +201,9 @@ curl -X POST http://localhost:8000/auth/signup \
     "person_name": "홍길동",
     "nick_name": "길동이",
     "email": "test@example.com",
-    "phone": "010-1234-5678"
+    "phone": "010-1234-5678",
+    "birth": "1995-05-15",
+    "gender": "male"
   }'
 ```
 
@@ -200,7 +222,10 @@ curl -X POST http://localhost:8000/auth/login \
 curl -X PATCH http://localhost:8000/user/character \
   -H "Authorization: Bearer {JWT_TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"character": "dog"}'
+  -d '{
+    "character": "dog",
+    "character_name": "뽀삐"
+  }'
 ```
 
 ### 4. 일기 작성 (기본)
@@ -211,7 +236,7 @@ curl -X POST http://localhost:8000/diary/ \
   -d '{
     "title": "오늘의 일기",
     "content": "오늘은 정말 행복한 하루였다.",
-    "diary_date": "2025-10-19"
+    "diary_date": "2025-01-15"
   }'
 ```
 
@@ -223,7 +248,7 @@ curl -X POST http://localhost:8000/diary/ \
   -d '{
     "title": "오늘의 일기",
     "content": "오늘은 정말 행복한 하루였다.",
-    "diary_date": "2025-10-19",
+    "diary_date": "2025-01-15",
     "emotion": "기쁨",
     "recommend_content": {
       "도서": [{"title": "행복한 책", "author": "작가"}],
@@ -239,8 +264,36 @@ curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
   -d '{
     "sentence": "오늘 너무 기분이 좋아!",
-    "character": "dog"
+    "character": "강아지"
   }'
+```
+
+### 6. 챗봇 대화 저장
+```bash
+# 대화방 생성
+curl -X POST http://localhost:8000/chat/start \
+  -H "Authorization: Bearer {JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "오늘의 대화"}'
+
+# 메시지 저장
+curl -X POST http://localhost:8000/chat/1/message \
+  -H "Authorization: Bearer {JWT_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_message": "안녕?",
+    "bot_response": "왈왈! 반가워!",
+    "character": "dog",
+    "character_name": "뽀삐"
+  }'
+
+# 대화 목록 조회
+curl -X GET http://localhost:8000/chat/list \
+  -H "Authorization: Bearer {JWT_TOKEN}"
+
+# 대화 상세 조회 (메시지 포함)
+curl -X GET http://localhost:8000/chat/1 \
+  -H "Authorization: Bearer {JWT_TOKEN}"
 ```
 
 ---
@@ -297,6 +350,14 @@ docker-compose down
 - 6가지 동물 캐릭터 (dog, cat, bear, rabbit, racoon, hamster)
 - 영어-한글 자동 매핑
 - 사용자별 캐릭터 저장 및 변경 가능
+- 메시지별 캐릭터 정보 저장 (변경 이력 추적)
+
+### 대화 이력 관리
+- 대화방 단위 관리 (Chat ↔ Message 1:N 관계)
+- 메시지 순서 보장 (message_order)
+- 최근 활동순 정렬 (COALESCE 활용)
+- Cascade 삭제 (대화 삭제 시 메시지 자동 삭제)
+- 대화 종료 시 감정 분석 결과 저장
 
 ---
 
@@ -308,6 +369,8 @@ docker-compose down
 ### 데이터 구조
 - **emotion**: 문자열 (단일 감정)
 - **recommend_content**: JSON ({"도서": [...], "음악": [...], "식사": [...]})
+- **Chat**: 대화방 (title, emotion, recommend_content, last_message_date)
+- **Message**: 메시지 (user_message, bot_response, character, character_name, message_order)
 
 ### 코드 품질
 - ✅ 모든 API에 예외 처리

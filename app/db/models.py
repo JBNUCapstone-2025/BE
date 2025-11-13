@@ -46,6 +46,7 @@ class User(Base):
 
     # 관계 설정
     diaries = relationship("Diary", back_populates="user", cascade="all, delete-orphan")
+    chats = relationship("Chat", back_populates="user", cascade="all, delete-orphan")
 
 
 class Diary(Base):
@@ -74,3 +75,57 @@ class Diary(Base):
 
     # 관계 설정
     user = relationship("User", back_populates="diaries")
+
+
+class Chat(Base):
+    __tablename__ = "Chat"
+
+    # 기본 키
+    chat_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+
+    # 외래 키
+    user_id = Column(Integer, ForeignKey("User.user_id"), nullable=False, index=True)
+
+    # 대화 정보
+    title = Column(String(200), nullable=False, default="새 대화")
+
+    # AI 분석 결과 (대화 종료 시 저장)
+    emotion = Column(String(20), nullable=True)  # "기쁨", "슬픔", "분노", "불안", "설렘", "무기력"
+    recommend_content = Column(JSON, nullable=True)  # {"도서": [...], "음악": [...], "식사": [...]}
+
+    # 최근 대화순 정렬용
+    last_message_date = Column(DateTime(timezone=True), nullable=True, index=True)
+
+    # 타임스탬프
+    create_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # 관계 설정
+    user = relationship("User", back_populates="chats")
+    messages = relationship("Message", back_populates="chat", cascade="all, delete-orphan", order_by="Message.message_order")
+
+
+class Message(Base):
+    __tablename__ = "Message"
+
+    # 기본 키
+    message_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+
+    # 외래 키
+    chat_id = Column(Integer, ForeignKey("Chat.chat_id"), nullable=False, index=True)
+
+    # 메시지 내용
+    user_message = Column(Text, nullable=False)
+    bot_response = Column(Text, nullable=False)
+
+    # 캐릭터 정보 (메시지 전송 당시의 캐릭터)
+    character = Column(String(20), nullable=False)  # dog, cat, bear, rabbit, racoon, hamster
+    character_name = Column(String(20), nullable=False)  # 사용자가 캐릭터에게 붙인 이름
+
+    # 메시지 순서
+    message_order = Column(Integer, nullable=False)
+
+    # 타임스탬프
+    create_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # 관계 설정
+    chat = relationship("Chat", back_populates="messages")
