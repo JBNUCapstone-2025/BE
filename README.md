@@ -154,7 +154,8 @@ POST /auth/login     - 로그인 (JWT 토큰 반환)
 ### 사용자 프로필 API
 ```
 GET   /user/profile     - 프로필 조회 (JWT 필수)
-PATCH /user/profile     - 프로필 수정 (JWT 필수)
+PATCH /user/profile     - 프로필 수정 (person_name, nick_name, email, phone, birth, gender)
+PATCH /user/password    - 비밀번호 변경 (current_password, new_password)
 PATCH /user/character   - 캐릭터 변경 (JWT 필수)
 ```
 
@@ -276,15 +277,13 @@ curl -X POST http://localhost:8000/chat/start \
   -H "Content-Type: application/json" \
   -d '{"title": "오늘의 대화"}'
 
-# 메시지 저장
+# 메시지 저장 (캐릭터 정보는 User 테이블에서 자동 조회)
 curl -X POST http://localhost:8000/chat/1/message \
   -H "Authorization: Bearer {JWT_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
     "user_message": "안녕?",
-    "bot_response": "왈왈! 반가워!",
-    "character": "dog",
-    "character_name": "뽀삐"
+    "bot_response": "왈왈! 반가워!"
   }'
 
 # 대화 목록 조회
@@ -350,6 +349,7 @@ docker-compose down
 - 6가지 동물 캐릭터 (dog, cat, bear, rabbit, racoon, hamster)
 - 영어-한글 자동 매핑
 - 사용자별 캐릭터 저장 및 변경 가능
+- 메시지 저장 시 User 테이블에서 캐릭터 정보 자동 조회
 - 메시지별 캐릭터 정보 저장 (변경 이력 추적)
 
 ### 대화 이력 관리

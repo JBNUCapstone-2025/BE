@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.deps import get_db, get_current_user_id
-from app.schemas.user import UserResponse, CharacterUpdateRequest, UserProfileUpdateRequest
+from app.schemas.user import UserResponse, CharacterUpdateRequest, UserProfileUpdateRequest, PasswordChangeRequest
 from app.db.models import User
 from app.core.security import verify_password, get_password_hash
 
@@ -31,9 +31,10 @@ def update_profile(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ):
-    """사용자 프로필 업데이트
+    """사용자 프로필 업데이트 (person_name, nick_name, email, phone, birth, gender)
 
-    비밀번호 변경 안 할 시: current_password, new_password 필드 제외 (null 또는 생략)
+    닉네임과 이메일은 중복 체크 (본인 제외)
+    비밀번호 변경은 PATCH /user/password 사용
     """
 
     user = db.query(User).filter(User.user_id == user_id).first()
@@ -56,23 +57,60 @@ def update_profile(
                 detail="이미 사용 중인 닉네임입니다"
             )
 
-    # 비밀번호 변경 (선택 사항)
-    if profile_data.new_password:
-        # 현재 비밀번호 확인
-        if not verify_password(profile_data.current_password, user.password):
+    # 이메일 중복 체크 (본인 제외)
+    if profile_data.email != user.email:
+        existing_user = db.query(User).filter(
+            User.email == profile_data.email,
+            User.user_id != user_id
+        ).first()
+        if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="현재 비밀번호가 일치하지 않습니다"
+                detail="이미 사용 중인 이메일입니다"
             )
-        # 새 비밀번호로 업데이트
-        user.password = get_password_hash(profile_data.new_password)
 
     # 프로필 업데이트
     user.person_name = profile_data.person_name
     user.nick_name = profile_data.nick_name
+    user.email = profile_data.email
     user.phone = profile_data.phone
     user.birth = profile_data.birth
     user.gender = profile_data.gender
+
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
+@router.patch("/password", response_model=UserResponse)
+def change_password(
+    password_data: PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """비밀번호 변경
+
+    현재 비밀번호 확인 후 새 비밀번호로 변경
+    """
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다"
+        )
+
+    # 현재 비밀번호 확인
+    if not verify_password(password_data.current_password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="현재 비밀번호가 일치하지 않습니다"
+        )
+
+    # 새 비밀번호로 업데이트
+    user.password = get_password_hash(password_data.new_password)
 
     db.commit()
     db.refresh(user)

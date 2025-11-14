@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.db.models import Chat, Message
+from app.db.models import Chat, Message, User
 from app.schemas.chat import (
     ChatCreateRequest,
     ChatUpdateTitleRequest,
@@ -102,23 +102,32 @@ def get_next_message_order(db: Session, chat_id: int) -> int:
 
 
 def create_message(db: Session, chat_id: int, user_id: int, message: MessageCreateRequest) -> Optional[Message]:
-    """메시지 저장"""
+    """메시지 저장 (캐릭터 정보는 User 테이블에서 자동 조회)"""
     try:
         # 대화방이 존재하고 본인 것인지 확인
         db_chat = get_chat_by_id(db, chat_id, user_id)
         if not db_chat:
             return None
 
+        # User 테이블에서 캐릭터 정보 조회
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            return None
+
+        # 캐릭터가 설정되지 않은 경우 에러 (API 레이어에서 처리)
+        if not user.character or not user.character_name:
+            raise ValueError("캐릭터가 설정되지 않았습니다")
+
         # 다음 메시지 순서 번호 구하기
         message_order = get_next_message_order(db, chat_id)
 
-        # 메시지 생성
+        # 메시지 생성 (User 테이블의 캐릭터 정보 사용)
         db_message = Message(
             chat_id=chat_id,
             user_message=message.user_message,
             bot_response=message.bot_response,
-            character=message.character,
-            character_name=message.character_name,
+            character=user.character,
+            character_name=user.character_name,
             message_order=message_order
         )
         db.add(db_message)

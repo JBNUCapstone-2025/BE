@@ -17,16 +17,7 @@ class ChatUpdateTitleRequest(BaseModel):
 class MessageCreateRequest(BaseModel):
     user_message: str = Field(..., min_length=1, description="유저 메시지")
     bot_response: str = Field(..., min_length=1, description="봇 응답")
-    character: str = Field(..., description="캐릭터 종류 (dog, cat, bear, rabbit, racoon, hamster)")
-    character_name: str = Field(..., min_length=1, max_length=20, description="캐릭터 이름")
-
-    @field_validator('character')
-    @classmethod
-    def validate_character(cls, v):
-        valid_characters = ["dog", "cat", "bear", "rabbit", "racoon", "hamster"]
-        if v not in valid_characters:
-            raise ValueError(f'캐릭터는 {", ".join(valid_characters)} 중 하나여야 합니다')
-        return v
+    # character, character_name은 User 테이블에서 자동으로 조회
 
 
 # 대화 종료 시 감정/추천 저장 요청 스키마

@@ -478,7 +478,8 @@ def create_message(
 ):
     """
     메시지 저장
-    - user_message, bot_response, character, character_name 모두 필수
+    - user_message, bot_response만 필수
+    - character, character_name은 User 테이블에서 자동으로 조회
     """
     try:
         db_message = chat_crud.create_message(db, chat_id, user_id, message_data)
@@ -492,6 +493,14 @@ def create_message(
             message="메시지가 저장되었습니다",
             data=db_message
         )
+    except ValueError as e:
+        # 캐릭터 미설정 에러 처리
+        if "캐릭터가 설정되지 않았습니다" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="캐릭터가 설정되지 않았습니다. 마이페이지에서 먼저 캐릭터를 설정해주세요."
+            )
+        raise
     except HTTPException:
         raise
     except SQLAlchemyError as e:

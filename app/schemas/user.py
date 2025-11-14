@@ -79,18 +79,22 @@ class UserSignupResponse(BaseModel):
 class UserProfileUpdateRequest(BaseModel):
     person_name: str = Field(..., min_length=2, max_length=50, description="사람 이름")
     nick_name: str = Field(..., min_length=2, max_length=8, description="닉네임")
+    email: EmailStr = Field(..., description="이메일")
     phone: str = Field(..., pattern=r'^010-\d{4}-\d{4}$', description="휴대폰 번호 (010-1234-5678)")
     birth: date = Field(..., description="생년월일 (YYYY-MM-DD)")
     gender: GenderEnum = Field(..., description="성별 (남: male, 여: female)")
-    current_password: Optional[str] = Field(None, description="현재 비밀번호 (비밀번호 변경 시 필수)")
-    new_password: Optional[str] = Field(None, min_length=8, description="새 비밀번호 (변경 시에만 입력)")
+
+
+# 비밀번호 변경 요청 스키마
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, description="현재 비밀번호")
+    new_password: str = Field(..., min_length=8, description="새 비밀번호")
 
     @field_validator('new_password')
     @classmethod
-    def validate_password_change(cls, v, info):
-        # new_password가 있으면 current_password도 필수
-        if v is not None and info.data.get('current_password') is None:
-            raise ValueError('비밀번호를 변경하려면 현재 비밀번호를 입력해야 합니다')
+    def validate_new_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('새 비밀번호는 최소 8자 이상이어야 합니다')
         return v
 
 
