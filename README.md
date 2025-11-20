@@ -36,6 +36,14 @@ FastAPI 기반으로 구축된 AI 통합 백엔드 시스템입니다.
 - FAISS 벡터 DB 활용
 - 감정 기반 반대 감정 찾기
 
+### 6. 커뮤니티 (익명 게시판)
+- 6개 게시판 (자유, 비밀, 정보, 칭찬, 위로, 고민)
+- 완전 익명 시스템 (게시글별 익명 번호 부여)
+- 댓글/대댓글 (2단계)
+- 좋아요 기능 (게시글, 댓글)
+- 검색 기능 (제목+내용, 카테고리별)
+- 성능 최적화 (N+1 쿼리 해결)
+
 ---
 
 ## 🛠 기술 스택
@@ -65,18 +73,21 @@ BE/
 │   │   ├── auth.py          # 회원가입, 로그인
 │   │   ├── user.py          # 프로필, 캐릭터 설정
 │   │   ├── diary.py         # 감정 일기 CRUD
-│   │   └── chat.py          # AI 챗봇, 추천, 대화 CRUD
+│   │   ├── chat.py          # AI 챗봇, 추천, 대화 CRUD
+│   │   └── community.py     # 커뮤니티 게시판/댓글 CRUD
 │   ├── crud/                # Database CRUD 로직
 │   │   ├── user.py
 │   │   ├── diary.py
-│   │   └── chat.py
+│   │   ├── chat.py
+│   │   └── community.py
 │   ├── db/                  # Database 설정
 │   │   ├── database.py      # DB 연결 및 세션
-│   │   └── models.py        # SQLAlchemy 모델 (User, Diary, Chat, Message)
+│   │   └── models.py        # SQLAlchemy 모델 (User, Diary, Chat, Message, Board, Comment, Likes)
 │   └── schemas/             # Pydantic 스키마
 │       ├── user.py
 │       ├── diary.py
-│       └── chat.py
+│       ├── chat.py
+│       └── community.py
 ├── ai_core/                 # AI 핵심 기능
 │   ├── llm.py               # OpenAI API
 │   ├── vector_db.py         # FAISS 벡터 DB
@@ -181,11 +192,36 @@ DELETE /chat/{chat_id}              - 대화 삭제
 POST   /chat/{chat_id}/message      - 메시지 저장
 ```
 
+### 챗봇 대화 API
+```
+POST   /chat/start                  - 대화방 생성
+GET    /chat/list                   - 대화 목록 (최근 활동순)
+GET    /chat/{chat_id}              - 대화 상세 조회 (메시지 포함)
+PATCH  /chat/{chat_id}/title        - 제목 수정
+PATCH  /chat/{chat_id}/complete     - 대화 종료 (감정/추천 저장)
+DELETE /chat/{chat_id}              - 대화 삭제
+POST   /chat/{chat_id}/message      - 메시지 저장
+```
+
 ### AI API
 ```
 POST /api/chat           - AI 챗봇 (감정 분석 + 공감 응답)
 POST /api/recommend      - RAG 기반 추천
 POST /api/analyze-diary  - 일기 감정 분석
+```
+
+### 커뮤니티 API
+```
+POST   /community/board                   - 게시글 작성
+GET    /community/board/list              - 게시글 목록 (카테고리, 검색)
+GET    /community/board/{board_id}        - 게시글 상세 (댓글 포함)
+PUT    /community/board/{board_id}        - 게시글 수정
+DELETE /community/board/{board_id}        - 게시글 삭제
+POST   /community/board/{board_id}/like   - 게시글 좋아요 토글
+POST   /community/comment                 - 댓글/대댓글 작성
+PUT    /community/comment/{comment_id}    - 댓글 수정
+DELETE /community/comment/{comment_id}    - 댓글 삭제
+POST   /community/comment/{comment_id}/like - 댓글 좋아요 토글
 ```
 
 ---
