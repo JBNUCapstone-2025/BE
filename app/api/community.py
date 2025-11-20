@@ -291,7 +291,11 @@ def create_comment(
     db: Session = Depends(get_db),
     current_user_id: int = Depends(get_current_user_id)
 ):
-    """댓글/대댓글 작성"""
+    """댓글/대댓글 작성
+
+    - parent_comment_id를 0 또는 null로 하면 댓글로 작성됩니다
+    - parent_comment_id에 존재하는 comment_id를 입력하면 해당 댓글의 대댓글이 됩니다
+    """
     try:
         comment = crud.create_comment(db, current_user_id, comment_data)
 
