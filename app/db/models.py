@@ -77,7 +77,7 @@ class Diary(Base):
 
     # AI 분석 결과 (AI API 연동 전까지 null)
     emotion = Column(String(20), nullable=True)  # "기쁨", "슬픔", "분노", "불안", "설렘", "무기력"
-    recommend_content = Column(JSON, nullable=True)  # {"도서": [...], "음악": [...], "식사": [...]}
+    recommend_content = Column(JSON, nullable=True)  # {"book": "제목"} or {"music": "제목"} or {"food": "제목"} (1개만)
 
     # 일기 날짜 (달력 표시용)
     diary_date = Column(Date, nullable=False, index=True)
@@ -104,7 +104,7 @@ class Chat(Base):
 
     # AI 분석 결과 (대화 종료 시 저장)
     emotion = Column(String(20), nullable=True)  # "기쁨", "슬픔", "분노", "불안", "설렘", "무기력"
-    recommend_content = Column(JSON, nullable=True)  # {"도서": [...], "음악": [...], "식사": [...]}
+    recommend_content = Column(JSON, nullable=True)  # {"book": "제목"} or {"music": "제목"} or {"food": "제목"} (1개만)
 
     # 최근 대화순 정렬용
     last_message_date = Column(DateTime(timezone=True), nullable=True, index=True)

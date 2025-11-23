@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Union, Literal
 
 
 # 대화방 생성 요청 스키마
@@ -23,7 +23,11 @@ class MessageCreateRequest(BaseModel):
 # 대화 종료 시 감정/추천 저장 요청 스키마
 class ChatCompleteRequest(BaseModel):
     emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 무기력)")
-    recommend_content: Dict[str, List[Any]] = Field(..., description="AI 추천 콘텐츠 (도서, 음악, 식사)")
+    recommend_content: Union[
+        Dict[Literal["book"], str],
+        Dict[Literal["music"], str],
+        Dict[Literal["food"], str]
+    ] = Field(..., description="AI 추천 콘텐츠 (book, music, food 중 1개만)")
 
     @field_validator('emotion')
     @classmethod
@@ -31,15 +35,6 @@ class ChatCompleteRequest(BaseModel):
         valid_emotions = ["기쁨", "슬픔", "분노", "불안", "설렘", "무기력"]
         if v not in valid_emotions:
             raise ValueError(f'감정은 {", ".join(valid_emotions)} 중 하나여야 합니다')
-        return v
-
-    @field_validator('recommend_content')
-    @classmethod
-    def validate_recommend_content(cls, v):
-        valid_categories = ["도서", "음악", "식사"]
-        for key in v.keys():
-            if key not in valid_categories:
-                raise ValueError(f'추천 카테고리는 {", ".join(valid_categories)} 중 하나여야 합니다')
         return v
 
 
@@ -64,7 +59,11 @@ class ChatResponse(BaseModel):
     user_id: int
     title: str
     emotion: Optional[str] = None
-    recommend_content: Optional[Dict[str, List[Any]]] = None
+    recommend_content: Optional[Union[
+        Dict[Literal["book"], str],
+        Dict[Literal["music"], str],
+        Dict[Literal["food"], str]
+    ]] = None
     last_message_date: Optional[datetime] = None
     create_date: datetime
 
@@ -90,7 +89,11 @@ class ChatDetailResponse(BaseModel):
     user_id: int
     title: str
     emotion: Optional[str] = None
-    recommend_content: Optional[Dict[str, List[Any]]] = None
+    recommend_content: Optional[Union[
+        Dict[Literal["book"], str],
+        Dict[Literal["music"], str],
+        Dict[Literal["food"], str]
+    ]] = None
     last_message_date: Optional[datetime] = None
     create_date: datetime
     messages: List[MessageResponse] = []
