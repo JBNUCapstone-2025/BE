@@ -44,6 +44,14 @@ class User(Base):
     # 권한
     role = Column(Enum(UserRole), default=UserRole.MEMBER, nullable=False)
 
+    # 챌린지 관련 필드
+    mileage = Column(Integer, default=0, nullable=False)  # 마일리지
+    current_continent_id = Column(Integer, nullable=True)  # 현재 진행 중인 대륙 (NULL이면 미시작)
+    challenge_start_date = Column(DateTime(timezone=True), nullable=True)  # 챌린지 시작일 (3개월 리셋용)
+    available_challenges = Column(Integer, default=0, nullable=False)  # 사용 가능한 챌린지 횟수
+    last_challenge_date = Column(Date, nullable=True)  # 마지막 챌린지 수행 날짜
+    last_diary_date = Column(Date, nullable=True)  # 마지막 일기 작성 날짜 (챌린지 기회 리셋용)
+
     # 관계 설정
     diaries = relationship("Diary", back_populates="user", cascade="all, delete-orphan")
     chats = relationship("Chat", back_populates="user", cascade="all, delete-orphan")
@@ -51,6 +59,7 @@ class User(Base):
     comments = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     board_likes = relationship("BoardLike", back_populates="user", cascade="all, delete-orphan")
     comment_likes = relationship("CommentLike", back_populates="user", cascade="all, delete-orphan")
+    challenges = relationship("Challenge", back_populates="user", cascade="all, delete-orphan")
 
 
 class Diary(Base):
@@ -240,4 +249,54 @@ class CommentLike(Base):
     # UNIQUE 제약 (중복 좋아요 방지)
     __table_args__ = (
         UniqueConstraint('comment_id', 'user_id', name='uq_comment_like'),
+    )
+
+
+class Continent(Base):
+    __tablename__ = "Continent"
+
+    # 기본 키
+    continent_id = Column(Integer, primary_key=True)  # 1~6 고정
+
+    # 대륙 정보
+    continent_name = Column(String(50), nullable=False)  # 아시아, 유럽, 아프리카 등
+    display_order = Column(Integer, nullable=False)  # 화면 표시 순서
+
+    # 관계 설정
+    challenges = relationship("Challenge", back_populates="continent")
+
+
+class Challenge(Base):
+    __tablename__ = "Challenge"
+
+    # 기본 키
+    challenge_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+
+    # 외래 키
+    user_id = Column(Integer, ForeignKey("User.user_id", ondelete="CASCADE"), nullable=False, index=True)
+    continent_id = Column(Integer, ForeignKey("Continent.continent_id"), nullable=False, index=True)
+
+    # 챌린지 정보
+    challenge_number = Column(Integer, nullable=False)  # 이 대륙에서 몇 번째 챌린지인지 (1~10)
+    challenge_type = Column(String(20), nullable=False)  # basic, book, music, food
+    challenge_text = Column(Text, nullable=False)  # 실제 챌린지 내용
+    source_diary_date = Column(Date, nullable=True)  # 챌린지 생성 시 기준이 된 일기의 날짜 (재선택 시 동일 일기 기준 유지용)
+
+    # 사용자 제출 내용
+    content = Column(Text, nullable=True)  # 사용자가 작성한 내용
+
+    # 완료 상태
+    is_completed = Column(Boolean, default=False, nullable=False)
+    completed_date = Column(Date, nullable=True)
+
+    # 타임스탬프
+    create_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # 관계 설정
+    user = relationship("User", back_populates="challenges")
+    continent = relationship("Continent", back_populates="challenges")
+
+    # UNIQUE 제약 (한 대륙에서 같은 번호 중복 방지)
+    __table_args__ = (
+        UniqueConstraint('user_id', 'continent_id', 'challenge_number', name='uq_user_continent_challenge'),
     )

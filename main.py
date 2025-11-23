@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # API 라우터 import
-from app.api import auth, diary, chat, user, community
+from app.api import auth, diary, chat, user, community, challenge
 
 app = FastAPI(
     title="ICSYF AI Integrated API",
@@ -34,6 +34,7 @@ app.include_router(diary.router)
 app.include_router(chat.router)
 app.include_router(chat.chat_router)  # Chat CRUD 라우터
 app.include_router(community.router)  # Community 라우터
+app.include_router(challenge.router, prefix="/challenge", tags=["Challenge"])  # Challenge 라우터
 
 
 @app.get("/")
@@ -48,7 +49,8 @@ def read_root():
             "사용자 인증 (회원가입, 로그인)",
             "다이어리 관리 (작성, 조회, 수정, 삭제)",
             "AI 일기 분석 및 추천",
-            "커뮤니티 (익명 게시판, 댓글, 좋아요)"
+            "커뮤니티 (익명 게시판, 댓글, 좋아요)",
+            "챌린지 시스템 (6대륙 60개 챌린지, 마일리지)"
         ],
         "docs": "/docs"
     }

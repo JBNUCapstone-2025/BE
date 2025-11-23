@@ -12,6 +12,7 @@ from app.crud.diary import (
     get_diaries_by_user, get_diaries_by_month,
     update_diary, delete_diary
 )
+from app.db.models import User
 
 router = APIRouter(prefix="/diary", tags=["Diary"])
 
@@ -32,6 +33,14 @@ def create_diary_endpoint(
         )
 
     new_diary = create_diary(db, user_id, diary)
+
+    # 일기 작성 시 챌린지 기회 증가 + 작성 날짜 기록
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if user:
+        user.available_challenges += 1
+        user.last_diary_date = diary.diary_date  # 일기 작성 날짜 기록
+        db.commit()
+
     return {"message": "일기가 작성되었습니다", "diary": new_diary}
 
 
