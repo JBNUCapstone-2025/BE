@@ -89,9 +89,9 @@ BE/
 │   │   └── models.py        # SQLAlchemy 모델
 │   └── schemas/             # Pydantic 스키마
 ├── ai_core/                 # AI 핵심 기능
-│   ├── llm.py               # OpenAI API
-│   ├── vector_db.py         # FAISS 벡터 DB
-│   └── recommendation.py    # RAG 기반 추천
+│   ├── llm/                 # OpenAI API 감정 분석
+│   ├── vector_db/           # FAISS 벡터 DB
+│   └── recommendation/      # RAG 기반 추천
 ├── prompt/                  # 캐릭터 프롬프트
 ├── data/                    # 추천 데이터
 ├── create_tables.py         # DB 테이블 생성
@@ -275,11 +275,12 @@ docker-compose down
 - 캐릭터별 맞춤 응답
 
 ### 챌린지 시스템
-- 일기 작성으로 챌린지 기회 획득 (다음날 자정까지 유효)
+- 일기 작성 시 챌린지 기회 자동 획득 (최대 2개까지 누적)
 - 미완료 챌린지가 있으면 새로운 챌린지 선택 불가
 - 미완료 챌린지 자동 삭제 (다음날 자정)
-- 마일리지 자동 지급 (5개 완료마다)
+- 마일리지 자동 지급 (5개 완료마다 50~100원)
 - 전체 리셋 (90일 또는 60개 완료 시)
+- 챌린지 기회는 2일 이상 지나면 자동 리셋
 
 ---
 
@@ -290,8 +291,8 @@ docker-compose down
 
 ### 데이터 구조
 - **emotion**: 문자열 (단일 감정)
-- **recommend_content**: JSON ({"도서": [...], "음악": [...], "식사": [...]})
-- **챌린지**: basic (최대 5개, 중복 불가), book/music/food (중복 허용)
+- **recommend_content**: JSON ({"book": "제목"} or {"music": "제목"} or {"food": "제목"}, 1개만)
+- **챌린지**: basic (최대 5개, 중복 불가), book/music/food 추천 챌린지
 
 ### 코드 품질
 - ✅ 모든 API에 예외 처리
