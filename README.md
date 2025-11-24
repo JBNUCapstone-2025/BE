@@ -2,7 +2,7 @@
 
 **ICSYF (I Can See Your Feelings)** - 감정 기반 정서 관리 플랫폼 백엔드 서버
 
-FastAPI 기반으로 구축된 AI 통합 백엔드 시스템입니다.
+FastAPI 기반으로 구축된 백엔드 시스템입니다.
 
 ---
 
@@ -23,10 +23,11 @@ FastAPI 기반으로 구축된 AI 통합 백엔드 시스템입니다.
 
 ### 3. AI 챗봇 & 추천
 - 6가지 동물 캐릭터 대화 (강아지, 고양이, 곰, 토끼, 너구리, 햄스터)
+- 멀티턴 대화 지원 (LangChain 기반)
 - 실시간 감정 분석 (OpenAI API)
 - 캐릭터별 맞춤 말투
 - RAG 기반 스마트 추천 (도서, 음악, 식사)
-- FAISS 벡터 DB 활용
+- ChromaDB 벡터 DB (감정 + 카테고리 이중 필터링)
 
 ### 4. 챗봇 대화 관리
 - 대화방 생성 및 관리 (CRUD)
@@ -58,10 +59,11 @@ FastAPI 기반으로 구축된 AI 통합 백엔드 시스템입니다.
 |----------|-----------|
 | **Web Framework** | FastAPI + Uvicorn |
 | **Database** | MySQL 8.0 + SQLAlchemy ORM |
-| **Vector DB** | FAISS |
+| **Vector DB** | ChromaDB (RAG 기반 추천) |
+| **Embeddings** | HuggingFace sentence-transformers |
 | **Authentication** | JWT (python-jose, passlib, bcrypt) |
 | **Validation** | Pydantic |
-| **AI/ML** | OpenAI API |
+| **AI/ML** | OpenAI API + LangChain |
 
 ---
 
@@ -69,7 +71,7 @@ FastAPI 기반으로 구축된 AI 통합 백엔드 시스템입니다.
 
 ```
 BE/
-├── main.py                  # FastAPI 앱 진입점
+├── main.py                  # FastAPI 앱 진입점 (라우터 등록만)
 ├── app/
 │   ├── core/                # 설정, 보안, 의존성
 │   │   ├── config.py        # 환경 변수 관리
@@ -89,11 +91,19 @@ BE/
 │   │   └── models.py        # SQLAlchemy 모델
 │   └── schemas/             # Pydantic 스키마
 ├── ai_core/                 # AI 핵심 기능
-│   ├── llm/                 # OpenAI API 감정 분석
-│   ├── vector_db/           # FAISS 벡터 DB
-│   └── recommendation/      # RAG 기반 추천
+│   ├── llm/                 # LangChain + OpenAI API
+│   │   └── llm_utils.py     # 감정 분석, 공감 응답, 추천 응답
+│   ├── vector_db/           # ChromaDB 벡터 DB
+│   │   └── vector_db.py     # 감정/카테고리 기반 RAG 검색
+│   └── recommendation/      # 추천 시스템
+│       ├── content_recommender.py  # 스마트 추천
+│       └── rag_recommender.py      # 추천 포맷팅
 ├── prompt/                  # 캐릭터 프롬프트
-├── data/                    # 추천 데이터
+│   └── characters.py        # 동물 캐릭터 말투 정의
+├── data/                    # 추천 데이터 (레거시, 참고용)
+├── data2/                   # ChromaDB 입력 데이터 (JSON)
+├── scripts/                 # 유틸리티 스크립트
+│   └── mk_data_db.py        # ChromaDB 생성 스크립트
 ├── create_tables.py         # DB 테이블 생성
 ├── requirements.txt
 └── .env
@@ -194,9 +204,9 @@ POST   /chat/{chat_id}/message      - 메시지 저장
 
 ### AI API
 ```
-POST /api/chat           - AI 챗봇 (감정 분석 + 공감 응답)
-POST /api/recommend      - RAG 기반 추천
-POST /api/analyze-diary  - 일기 감정 분석
+POST /api/chat           - AI 챗봇 (멀티턴 대화, 감정 분석, 공감 응답)
+POST /api/recommend      - RAG 기반 추천 (도서, 음악, 식사)
+POST /api/analyze-diary  - 일기 감정 분석 (도서 2개, 음악 2개, 식사 2개)
 ```
 
 ### 커뮤니티 API
@@ -268,11 +278,13 @@ docker-compose down
 - 에러 처리 완비 (모든 API/CRUD)
 - Pydantic 검증으로 입력값 안전성 확보
 
-### AI 통합
-- OpenAI API 감정 분석
-- FAISS 벡터 DB 활용
-- RAG 기반 스마트 추천
-- 캐릭터별 맞춤 응답
+### AI 기능
+- LangChain 기반 멀티턴 대화 지원
+- OpenAI API 감정 분석 (6가지 감정)
+- ChromaDB 벡터 DB (감정 + 카테고리 이중 필터링)
+- HuggingFace 다국어 임베딩 모델
+- RAG 기반 스마트 추천 (의미 검색)
+- 캐릭터별 맞춤 응답 (온도 조절)
 
 ### 챌린지 시스템
 - 일기 작성 시 챌린지 기회 자동 획득 (최대 2개까지 누적)

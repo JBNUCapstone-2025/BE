@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, diary, chat, user, community, challenge
 
 app = FastAPI(
-    title="ICSYF AI Integrated API",
-    description="감정 기반 정서 관리 플랫폼 통합 API (AI + Backend)",
+    title="ICSYF API",
+    description="감정 기반 정서 관리 플랫폼 API",
     version="2.0.0"
 )
 
@@ -41,7 +41,7 @@ app.include_router(challenge.router, prefix="/challenge", tags=["Challenge"])  #
 def read_root():
     """API 서버 상태 확인"""
     return {
-        "message": "✅ ICSYF AI 통합 서버가 성공적으로 실행되었습니다!",
+        "message": "✅ ICSYF 서버가 성공적으로 실행되었습니다!",
         "version": "2.0.0",
         "features": [
             "AI 챗봇 (감정 분석 + 캐릭터 대화)",

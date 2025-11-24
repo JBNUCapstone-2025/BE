@@ -13,8 +13,8 @@ from ai_core.llm import (
     generate_empathetic_response,
     generate_recommendation_response
 )
-from ai_core.vector_db import find_dissimilar_emotion_key
-from ai_core.recommendation import format_recommendation, get_smart_recommendation
+from ai_core.vector_db import get_recommendation_by_emotion
+from ai_core.recommendation import format_recommendation
 
 # DB 및 스키마 import
 from app.core.deps import get_db, get_current_user_id
@@ -41,6 +41,7 @@ chat_router = APIRouter(prefix="/chat", tags=["Chat CRUD"])
 class ChatRequest(BaseModel):
     sentence: str
     character: str = "강아지"  # 기본값은 강아지
+    conversation_history: list[dict[str, str]] = []  # 이전 대화 기록
 
 
 class RecommendRequest(BaseModel):
@@ -57,27 +58,39 @@ class DiaryAnalysisRequest(BaseModel):
 @router.post("/chat")
 async def chat(request: ChatRequest):
     """
-    AI 챗봇 - 감정 분석 및 공감 응답
+    AI 챗봇 - 감정 분석 및 공감 응답 (멀티턴 지원)
     1. 문장에서 감정 추출
     2. 공감 기능이 강화된 응답 생성
-    3. 감정 벡터를 만들어 벡터 DB에서 반대 감정 찾기
-    4. 반대 감정 기반 콘텐츠 추천
-    5. 캐릭터 말투로 응답 생성
+    3. 대화 이력 관리
     """
     try:
+        # 대화 이력 처리
+        if request.conversation_history:
+            chat_history = request.conversation_history
+        else:
+            chat_history = []
+
         # 1. 감정 추출
         emotion = extract_emotion(request.sentence)
+
+        # 현재 사용자의 질문 chat_history에 저장
+        chat_history.append({"role": "user", "content": request.sentence})
 
         # 2. 공감 기능 강화 - 먼저 사용자의 감정에 공감
         empathy_response = generate_empathetic_response(
             character=request.character,
             user_sentence=request.sentence,
-            user_emotion=emotion
+            user_emotion=emotion,
+            chat_history=chat_history
         )
+
+        # assistant의 문장 chat_history에 저장
+        chat_history.append({"role": "assistant", "content": empathy_response})
 
         return {
             "answer": empathy_response,
-            "detected_emotion": emotion
+            "detected_emotion": emotion,
+            "conversation_history": chat_history
         }
 
     except openai.APIError as e:
@@ -107,32 +120,26 @@ async def recommend(request: RecommendRequest):
     """
     RAG 기반 지능형 추천 시스템
     1. 전체 대화 기록에서 최근 감정 분석
-    2. 벡터 DB를 활용한 반대 감정 찾기
-    3. 대화 내용과 가장 관련성 높은 콘텐츠 추천
-    4. 캐릭터 말투로 응답 생성
+    2. 벡터 DB를 활용하여 관련 콘텐츠 추천
+    3. 캐릭터 말투로 응답 생성
     """
     try:
         # 1. 전체 대화에서 최근 감정 추출
         conversation = request.conversation_history or "평범한 하루"
+        category = request.type
 
         # 최근 감정 추출 (여러 감정이 있을 경우 가장 최근 것 선택)
         recent_emotion = extract_recent_emotion(conversation)
+        print("최근 감정 :", recent_emotion)
 
-        # 2. 감정 임베딩 생성 후 벡터 DB에서 반대 감정 찾기
-        emotion_vector = get_embedding(recent_emotion)
-        if emotion_vector is None:
-            # fallback
-            opposite_emotion = "평온"
-        else:
-            opposite_emotion = find_dissimilar_emotion_key(emotion_vector)
-
-        # 3. 의미 기반 스마트 추천
-        selected = get_smart_recommendation(
-            user_text=conversation,
-            emotion=opposite_emotion,
-            category=request.type,
-            top_k=3
+        # 2. 벡터 DB에서 감정과 대화에 따른 추천 (3개)
+        selected = get_recommendation_by_emotion(
+            emotion_query=recent_emotion,
+            conversation=conversation,
+            category=category,
+            k=3
         )
+        print(selected)
 
         if not selected:
             return {
@@ -143,15 +150,15 @@ async def recommend(request: RecommendRequest):
         recommendation_data = {
             "category": request.type,
             "current_emotion": recent_emotion,
-            "recommended_emotion": opposite_emotion,
-            "recommendation": selected[0] if selected else {},
+            "recommended_emotion": recent_emotion,
+            "recommendation": selected[0],
             "all_recommendations": selected
         }
 
-        # 4. 추천 정보 포맷팅
+        # 3. 추천 정보 포맷팅
         formatted_rec = format_recommendation(request.type, recommendation_data)
 
-        # 5. 캐릭터 말투로 추천 메시지 생성
+        # 4. 캐릭터 말투로 추천 메시지 생성
         answer = generate_recommendation_response(
             character=request.character,
             category=request.type,
@@ -198,41 +205,42 @@ async def analyze_diary(request: DiaryAnalysisRequest):
         # 1. 감정 추출
         emotion = extract_emotion(request.diary)
 
-        # 2. 감정 임베딩 생성 후 벡터 DB에서 반대 감정 찾기
+        # 2. 감정 임베딩 생성
         emotion_vector = get_embedding(emotion)
         if emotion_vector is None:
             return {"error": "감정 분석에 실패했습니다."}
 
-        opposite_emotion = find_dissimilar_emotion_key(emotion_vector)
-
         # 3. 의미 기반 스마트 추천
+        from ai_core.recommendation import get_smart_recommendation
+
         selected_books = get_smart_recommendation(
             user_text=request.diary,
-            emotion=opposite_emotion,
+            emotion=emotion,
             category="도서",
             top_k=2
         )
 
         selected_music = get_smart_recommendation(
             user_text=request.diary,
-            emotion=opposite_emotion,
+            emotion=emotion,
             category="음악",
             top_k=2
         )
 
         selected_food = get_smart_recommendation(
             user_text=request.diary,
-            emotion=opposite_emotion,
+            emotion=emotion,
             category="식사",
             top_k=2
         )
 
         # 4. 감정에 따른 메시지 생성
         emotion_messages = {
-            "행복": "오늘 정말 좋은 하루를 보내셨네요! 이 기분을 더 오래 간직할 수 있는 콘텐츠를 추천해드려요.",
+            "기쁨": "오늘 정말 좋은 하루를 보내셨네요! 이 기분을 더 오래 간직할 수 있는 콘텐츠를 추천해드려요.",
+            "설렘": "설레는 마음이 느껴지네요! 이 기분을 더욱 풍성하게 만들어줄 콘텐츠를 준비했어요.",
+            "보통": "평온한 하루를 보내셨네요. 이 평화로움을 유지할 수 있는 콘텐츠예요.",
             "슬픔": "힘든 하루였군요. 위로가 되는 콘텐츠로 마음을 다독여보세요.",
             "분노": "화가 많이 나셨나봐요. 스트레스를 해소할 수 있는 콘텐츠를 준비했어요.",
-            "평온": "평온한 하루를 보내셨네요. 이 평화로움을 유지할 수 있는 콘텐츠예요.",
             "불안": "불안한 마음이 느껴지네요. 마음을 진정시킬 수 있는 콘텐츠를 추천드려요."
         }
 
@@ -240,7 +248,7 @@ async def analyze_diary(request: DiaryAnalysisRequest):
 
         return {
             "emotion": emotion,
-            "opposite_emotion": opposite_emotion,
+            "emotion": emotion,  # AI 개발자 버전에 중복 필드 있음
             "message": message,
             "books": selected_books,
             "music": selected_music,

@@ -28,3 +28,11 @@ python-multipart
 openai
 google-generativeai
 numpy
+
+# LangChain
+langchain
+langchain-openai
+langchain-huggingface
+langchain-core
+langchain-chroma
+sentence-transformers

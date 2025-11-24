@@ -1,94 +1,118 @@
 import os
-import pickle
-import numpy as np
-import faiss
-import google.generativeai as genai
-from dotenv import load_dotenv
+import json 
+from langchain_core.documents import Document
+from langchain_chroma import Chroma
+from ai_core.llm.llm_utils import embedding_model
+from typing import List, Dict, Any
+import shutil
 
-# API 키 설정
-load_dotenv()
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# 벡터db 생성 및 저장
 
-# 벡터화할 감정 키와 추천 콘텐츠 데이터
-EMOTION_DATA = {
-    "행복": {
-        "movies": ["이터널 선샤인", "어바웃 타임", "라라랜드"],
-        "music": ["Pharrell Williams - Happy", "아이유 - Blueming"],
-        "books": ["어린 왕자", "데일 카네기 인간관계론"]
-    },
-    "슬픔": {
-        "movies": ["조제, 호랑이 그리고 물고기들", "캐롤", "맨체스터 바이 더 씨"],
-        "music": ["Adele - Someone Like You", "김광석 - 서른 즈음에"],
-        "books": ["상실의 시대", "1984"]
-    },
-    "분노": {
-        "movies": ["달콤한 인생", "존 윅", "악마를 보았다"],
-        "music": ["Rage Against The Machine - Killing In The Name", "에픽하이 - Born Hater"],
-        "books": ["정의란 무엇인가", "총, 균, 쇠"]
-    },
-    "평온": {
-        "movies": ["리틀 포레스트", "패터슨", "원스"],
-        "music": ["Debussy - Clair de Lune", "Norah Jones - Don't Know Why"],
-        "books": ["월든", "느리게 사는 즐거움"]
-    },
-    "불안": {
-        "movies": ["버드맨", "블랙 스완", "더 파더"],
-        "music": ["Radiohead - Creep", "검정치마 - Antifreeze"],
-        "books": ["변신", "인간 실격"]
-    }
-}
 
-def get_embedding(text):
-    """텍스트를 임베딩 벡터로 변환합니다."""
-    try:
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="RETRIEVAL_DOCUMENT"
-        )
-        return result['embedding']
-    except Exception as e:
-        print(f"임베딩 생성 중 오류 발생: {e}")
-        return None
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
-def create_vector_db():
-    """감정 데이터를 기반으로 Faiss 벡터 DB를 생성하고 저장합니다."""
-    emotions = list(EMOTION_DATA.keys())
-    vectors = []
-    valid_emotions = []
+JSON_DIR = os.path.join(BASE_DIR, "data2")
+VECTORDB_DIR = os.path.join(BASE_DIR, "ai_core", "vector_db", "chroma_vectordb")
 
-    print("감정 키를 벡터화하는 중...")
-    for emotion in emotions:
-        embedding = get_embedding(emotion)
-        if embedding:
-            vectors.append(embedding)
-            valid_emotions.append(emotion)
-        else:
-            print(f"'{emotion}'을(를) 벡터화하지 못했습니다.")
+def load_book_docs_from_dir(directory: str) -> list[Document]:
+    docs : List[Document] = [] 
 
-    if not vectors:
-        print("벡터화할 데이터가 없습니다. API 키 또는 네트워크를 확인하세요.")
-        return
+    # 디렉토리 안의 모든 파일 확인
+    for filename in os.listdir(directory):
+        if filename.endswith(".json"):
+    
+            full_path = os.path.join(directory, filename)
 
-    dimension = len(vectors[0])
-    vector_matrix = np.array(vectors).astype('float32')
+            # 파일명에서 emotion_group 추출 (예: anger.json → anger)
+            
 
-    # Faiss 인덱스 생성 (L2 정규화 및 IndexFlatIP 사용)
-    faiss.normalize_L2(vector_matrix)
-    index = faiss.IndexFlatIP(dimension)
-    index.add(vector_matrix)
+            with open(full_path, "r", encoding="utf-8") as f:
+                payload: Dict[str, Any] = json.load(f)
 
-    print(f"Faiss 인덱스 생성 완료. {index.ntotal}개의 벡터가 추가되었습니다.")
 
-    # 인덱스 및 데이터 저장
-    faiss.write_index(index, "vector_db.faiss")
-    with open("emotion_data.pkl", "wb") as f:
-        pickle.dump({
-            "emotions": valid_emotions,
-            "data": EMOTION_DATA
-        }, f)
+            emotion = payload.get("emotion")
+            emotion_kr = payload.get("emotion_kr")
 
-    print("벡터 DB 파일(vector_db.faiss) 및 데이터 파일(emotion_data.pkl)이 성공적으로 저장되었습니다.")
+            for b in payload.get("books", []):
+                page_content = f"""
+                [BOOK]
+
+                감정: {emotion_kr} ({emotion})
+
+                제목: {b.get('title', '')}
+                부제: {b.get('subtitle', '')}
+                저자: {b.get('author', '')}
+                출판사: {b.get('publisher', '')}
+                가격: {b.get('price', '')}
+                """.strip()
+
+                metadata = {
+                    "emotion": emotion,
+                    "emotion_kr": emotion_kr,
+                    "category": "도서",  
+                    "title": b.get("title", ""),
+                    "author": b.get("author", ""),
+                    "publisher": b.get("publisher", ""),
+                    "detail_url": b.get("detail_url", ""),
+                    "cover_image_url": b.get("cover_image_url", ""),
+                }
+
+                docs.append(Document(page_content=page_content, metadata=metadata))
+
+
+            for m in payload.get("musics", []):
+                page_content = f"""
+                [MUSIC]
+
+                감정: {emotion_kr} ({emotion})
+
+                제목: {m.get('title', '')}
+                아티스트: {m.get('artist', '')}
+                앨범: {m.get('album', '')}
+                장르: {m.get('genre', '')}
+                """.strip()
+
+                metadata = {
+                    "emotion": emotion,
+                    "emotion_kr": emotion_kr,
+                    "category": "음악",
+                    "title": m.get("title", ""),
+                    "artist": m.get("artist", ""),
+                    "album": m.get("album", ""),
+                    "detail_url": m.get("detail_url", ""),
+                    "cover_image_url": m.get("cover_url", ""),
+                }
+                
+                docs.append(Document(page_content = page_content, metadata = metadata))
+
+    return docs
+
+        
+
+def build_vectordb(docs):
+    
+    # shutil.rmtree(VECTORDB_DIR)
+    os.makedirs(VECTORDB_DIR, exist_ok=True)
+
+    # VectorDB 생성
+    vectordb = Chroma(embedding_function = embedding_model, persist_directory = VECTORDB_DIR)
+    vectordb.add_documents(docs)
+
+    print(f"Chroma VectorDB 생성 완료: {VECTORDB_DIR}")
+    print(f"저장된 문서 수 : ", len(docs))
+
+    return vectordb
 
 if __name__ == "__main__":
-    create_vector_db()
+    # json 파일을 document 형식으로 변환 
+    # # [Document(metadata={'product_id', 'title','detail_url', 'tags': [], 'emotion_group'}, page_content='제목, 저자, 출판사, 키워드/태그,출간일,가격, 상세보기)]
+    docs = load_book_docs_from_dir(JSON_DIR) 
+
+    print("📌 DEBUG: docs count =", len(docs))
+    if len(docs) > 0:
+        print("📌 DEBUG: sample doc =", docs[0])
+    vectordb = build_vectordb(docs)
+
+# ===============================================
+# test_docs = vectordb.similarity_search("너무 화가나고 기분이 안좋아. 왜케 나를 화나게 하는걸까?", k=1)
+# print("TEST 결과 : ", test_docs)

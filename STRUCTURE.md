@@ -48,25 +48,30 @@ BE/
 ├── ai_core/                   # AI 핵심 기능
 │   ├── llm/                   # 언어 모델
 │   │   ├── __init__.py
-│   │   └── llm_utils.py       # OpenAI API 감정 분석, 응답 생성
+│   │   └── llm_utils.py       # LangChain + OpenAI API (감정 분석, 공감 응답, 추천 응답)
 │   │
 │   ├── recommendation/        # 추천 시스템
 │   │   ├── __init__.py
-│   │   ├── content_recommender.py    # 스마트 추천
-│   │   └── rag_recommender.py        # RAG 기반 추천
+│   │   ├── content_recommender.py    # 스마트 추천 (vector_db 직접 사용)
+│   │   └── rag_recommender.py        # 추천 포맷팅 (build_item_candidates)
 │   │
 │   └── vector_db/             # 벡터 데이터베이스
 │       ├── __init__.py
-│       └── vector_db.py       # FAISS 벡터 검색
+│       └── vector_db.py       # ChromaDB RAG 검색 (감정/카테고리 필터링)
 │
-├── data/                      # 데이터 파일
+├── data/                      # 데이터 파일 (레거시, 참고용)
 │   ├── recommendation_data.py # 추천 데이터
-│   ├── emotion_data.pkl       # 감정 벡터
-│   └── vector_db.faiss        # FAISS 인덱스
+│   └── emotion_data.pkl       # 감정 벡터
+│
+├── data2/                     # ChromaDB 입력 데이터
+│   └── *.json                 # 감정별 도서/음악 JSON 데이터 (git ignore)
+│
+├── scripts/                   # 유틸리티 스크립트
+│   └── mk_data_db.py          # ChromaDB 벡터 DB 생성 스크립트
 │
 └── prompt/                    # 프롬프트 템플릿
     ├── __init__.py
-    └── characters.py          # 캐릭터 정의 (6가지 동물 캐릭터)
+    └── characters.py          # 캐릭터 정의 (6가지 동물 캐릭터, 영어-한글 매핑)
 ```
 
 ## 주요 모듈 설명
@@ -101,9 +106,18 @@ BE/
 - 입력값 검증 (감정 6가지, 카테고리 등)
 
 ### ai_core/ - AI 핵심 기능
-- **llm/**: OpenAI API 감정 분석, 공감 응답 생성
-- **vector_db/**: FAISS 벡터 검색 (반대 감정 찾기)
-- **recommendation/**: RAG 기반 추천 (도서, 음악, 식사)
+- **llm/llm_utils.py**:
+  - LangChain 기반 멀티턴 대화 (ChatPromptTemplate, MessagesPlaceholder)
+  - OpenAI API 감정 분석 (6가지 감정, 온도 0.3)
+  - 공감 응답 생성 (캐릭터별 말투, 온도 0.8)
+  - 추천 응답 생성 (캐릭터 말투)
+- **vector_db/vector_db.py**:
+  - ChromaDB RAG 검색
+  - HuggingFace 임베딩 (sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)
+  - 감정(emotion_kr) + 카테고리(category) 이중 필터링
+- **recommendation/**:
+  - content_recommender.py: 스마트 추천 (vector_db 직접 사용)
+  - rag_recommender.py: 추천 포맷팅, build_item_candidates
 
 ## 데이터베이스 테이블 (10개)
 
@@ -128,6 +142,8 @@ BE/
 
 ### 2. AI 모듈 분리
 - **ai_core/**: AI 기능만 독립적으로 관리
+- LangChain 기반 프롬프트 템플릿 중앙화
+- ChromaDB 벡터 DB로 RAG 기반 추천
 - 패키지 구조로 명확한 의존성
 - 테스트 및 확장 용이
 
@@ -146,12 +162,35 @@ from app.schemas.diary import DiaryCreateRequest
 from app.core.deps import get_db, get_current_user_id
 
 # AI 기능 사용
-from ai_core.llm import extract_emotion
-from ai_core.vector_db import find_dissimilar_emotion_key
-from ai_core.recommendation import get_smart_recommendation
+from ai_core.llm import (
+    extract_emotion,
+    extract_recent_emotion,
+    generate_empathetic_response,
+    generate_recommendation_response
+)
+from ai_core.vector_db import get_recommendation_by_emotion
+from ai_core.recommendation import get_smart_recommendation, format_recommendation
 
-# 데이터 파일 참조
+# 데이터 파일 참조 (레거시)
 from data.recommendation_data import RECOMMENDATIONS
+```
+
+## ChromaDB 벡터 DB 생성
+
+```bash
+# 1. data2/ 폴더에 JSON 파일 준비
+# 각 JSON 파일 구조:
+# {
+#   "emotion": "joy",
+#   "emotion_kr": "기쁨",
+#   "books": [...],
+#   "musics": [...]
+# }
+
+# 2. 벡터 DB 생성 스크립트 실행
+python scripts/mk_data_db.py
+
+# 생성 위치: ai_core/vector_db/chroma_vectordb/
 ```
 
 ## 개발 가이드
@@ -161,3 +200,4 @@ from data.recommendation_data import RECOMMENDATIONS
 - 테스트 예시 (curl)
 - 주요 로직 설명
 - 최적화 방법
+- AI 시스템 아키텍처 (LangChain, ChromaDB, 멀티턴 대화)

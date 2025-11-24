@@ -21,3 +21,9 @@ __pycache__/
 # 6. Claude 문서 (Claude Documents)
 CLAUDE.md
 backend
+
+# 7. 대용량 데이터 파일 (Large Data Files)
+data2/*.json
+*.pkl
+ai_core/vector_db/chroma_vectordb/
+ai_core/vector_db/emotion_vectordb/
