@@ -22,7 +22,7 @@ class MessageCreateRequest(BaseModel):
 
 # 대화 종료 시 감정/추천 저장 요청 스키마
 class ChatCompleteRequest(BaseModel):
-    emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 무기력)")
+    emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 보통)")
     recommend_content: Union[
         Dict[Literal["book"], str],
         Dict[Literal["music"], str],
@@ -32,7 +32,7 @@ class ChatCompleteRequest(BaseModel):
     @field_validator('emotion')
     @classmethod
     def validate_emotion(cls, v):
-        valid_emotions = ["기쁨", "슬픔", "분노", "불안", "설렘", "무기력"]
+        valid_emotions = ["기쁨", "슬픔", "분노", "불안", "설렘", "보통"]
         if v not in valid_emotions:
             raise ValueError(f'감정은 {", ".join(valid_emotions)} 중 하나여야 합니다')
         return v

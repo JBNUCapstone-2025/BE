@@ -8,7 +8,7 @@ class DiaryCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=200, description="일기 제목")
     content: str = Field(..., min_length=1, description="일기 내용")
     diary_date: date = Field(..., description="일기 날짜 (YYYY-MM-DD)")
-    emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 무기력)")
+    emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 보통)")
     recommend_content: Union[
         Dict[Literal["book"], str],
         Dict[Literal["music"], str],
@@ -18,7 +18,7 @@ class DiaryCreateRequest(BaseModel):
     @field_validator('emotion')
     @classmethod
     def validate_emotion(cls, v):
-        valid_emotions = ["기쁨", "슬픔", "분노", "불안", "설렘", "무기력"]
+        valid_emotions = ["기쁨", "슬픔", "분노", "불안", "설렘", "보통"]
         if v not in valid_emotions:
             raise ValueError(f'감정은 {", ".join(valid_emotions)} 중 하나여야 합니다')
         return v
@@ -37,7 +37,7 @@ class DiaryResponse(BaseModel):
     user_id: int
     title: str
     content: str
-    emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 무기력)")
+    emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 보통)")
     recommend_content: Union[
         Dict[Literal["book"], str],
         Dict[Literal["music"], str],
