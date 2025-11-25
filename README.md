@@ -21,19 +21,22 @@ FastAPI 기반으로 구축된 백엔드 시스템입니다.
 - AI 감정 분석 및 추천
 - 일기 작성 시 챌린지 기회 증가
 
-### 3. AI 챗봇 & 추천
+### 3. AI 챗봇 & 추천 (완전 통합)
 - 6가지 동물 캐릭터 대화 (강아지, 고양이, 곰, 토끼, 너구리, 햄스터)
 - 멀티턴 대화 지원 (LangChain 기반)
 - 실시간 감정 분석 (OpenAI API)
 - 캐릭터별 맞춤 말투
 - RAG 기반 스마트 추천 (도서, 음악, 식사)
 - ChromaDB 벡터 DB (감정 + 카테고리 이중 필터링)
+- AI 대화와 DB 저장 완전 통합 (자동 저장)
+- 대화 히스토리 자동 로드
 
-### 4. 챗봇 대화 관리
-- 대화방 생성 및 관리 (CRUD)
-- 메시지 이력 저장 및 조회
+### 4. 챗봇 대화 관리 (AI 통합)
+- 대화방 자동 생성 및 관리
+- 메시지 자동 저장 (AI 응답과 동시)
 - 캐릭터 변경 이력 추적
-- 대화 종료 시 감정 분석 결과 저장
+- 대화 종료 시 감정 분석 + 사용자 선택 카테고리 추천
+- 완료된 대화 재사용 방지
 
 ### 5. 커뮤니티 (익명 게시판)
 - 6개 게시판 (자유, 비밀, 정보, 칭찬, 위로, 고민)
@@ -102,8 +105,14 @@ BE/
 │   └── characters.py        # 동물 캐릭터 말투 정의
 ├── data/                    # 추천 데이터 (레거시, 참고용)
 ├── data2/                   # ChromaDB 입력 데이터 (JSON)
+│   ├── anger.json           # 분노 감정 도서/음악 데이터
+│   ├── anxiety.json         # 불안 감정 도서/음악 데이터
+│   ├── excitement.json      # 설렘 감정 도서/음악 데이터
+│   ├── joy.json             # 기쁨 감정 도서/음악 데이터
+│   ├── normal.json          # 보통 감정 도서/음악 데이터
+│   └── sadness.json         # 슬픔 감정 도서/음악 데이터
 ├── scripts/                 # 유틸리티 스크립트
-│   └── mk_data_db.py        # ChromaDB 생성 스크립트
+│   └── mk_data_db.py        # ChromaDB 생성 스크립트 (4305개 문서)
 ├── create_tables.py         # DB 테이블 생성
 ├── requirements.txt
 └── .env
@@ -151,7 +160,14 @@ OPENAI_API_KEY=your-openai-api-key
 python create_tables.py
 ```
 
-### 5. 서버 실행
+### 5. 벡터 DB 생성 (ChromaDB)
+```bash
+python scripts/mk_data_db.py
+# 또는
+python -m scripts.mk_data_db
+```
+
+### 6. 서버 실행
 ```bash
 uvicorn main:app --reload
 ```
@@ -191,21 +207,19 @@ PUT    /diary/{diary_id}              - 일기 수정
 DELETE /diary/{diary_id}              - 일기 삭제
 ```
 
-### 챗봇 대화 API
+### AI 챗봇 API (완전 통합)
 ```
-POST   /chat/start                  - 대화방 생성
+POST   /chat/message                - AI 대화 + 자동 저장 (히스토리 자동 로드, 대화방 자동 생성)
+POST   /chat/{chat_id}/complete     - 대화 종료 + AI 추천 (카테고리 선택: book/music/food)
 GET    /chat/list                   - 대화 목록 (최근 활동순)
 GET    /chat/{chat_id}              - 대화 상세 조회 (메시지 포함)
 PATCH  /chat/{chat_id}/title        - 제목 수정
-PATCH  /chat/{chat_id}/complete     - 대화 종료 (감정/추천 저장)
 DELETE /chat/{chat_id}              - 대화 삭제
-POST   /chat/{chat_id}/message      - 메시지 저장
+POST   /chat/start                  - 대화방 생성 (선택적, 자동 생성으로 거의 불필요)
 ```
 
-### AI API
+### AI 분석 API
 ```
-POST /api/chat           - AI 챗봇 (멀티턴 대화, 감정 분석, 공감 응답)
-POST /api/recommend      - RAG 기반 추천 (도서, 음악, 식사)
 POST /api/analyze-diary  - 일기 감정 분석 (도서 2개, 음악 2개, 식사 2개)
 ```
 
@@ -249,6 +263,9 @@ docker logs -f icsyf-be-server
 # 테이블 생성
 docker exec -it icsyf-be-server python create_tables.py
 
+# 벡터 DB 생성 (ChromaDB - 4305개 문서)
+docker exec -it icsyf-be-server python -m scripts.mk_data_db
+
 # 재시작
 docker-compose restart
 
@@ -281,10 +298,12 @@ docker-compose down
 ### AI 기능
 - LangChain 기반 멀티턴 대화 지원
 - OpenAI API 감정 분석 (6가지 감정)
-- ChromaDB 벡터 DB (감정 + 카테고리 이중 필터링)
+- ChromaDB 벡터 DB (감정 + 카테고리 이중 필터링, 4305개 문서)
 - HuggingFace 다국어 임베딩 모델
 - RAG 기반 스마트 추천 (의미 검색)
 - 캐릭터별 맞춤 응답 (온도 조절)
+- AI 대화와 DB 저장 완전 통합 (자동 저장/로드)
+- 대화 종료 시 사용자 선택 카테고리 추천
 
 ### 챌린지 시스템
 - 일기 작성 시 챌린지 기회 자동 획득 (최대 2개까지 누적)

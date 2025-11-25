@@ -60,14 +60,18 @@ BE/
 │       └── vector_db.py       # ChromaDB RAG 검색 (감정/카테고리 필터링)
 │
 ├── data/                      # 데이터 파일 (레거시, 참고용)
-│   ├── recommendation_data.py # 추천 데이터
-│   └── emotion_data.pkl       # 감정 벡터
+│   └── recommendation_data.py # 추천 데이터
 │
-├── data2/                     # ChromaDB 입력 데이터
-│   └── *.json                 # 감정별 도서/음악 JSON 데이터 (git ignore)
+├── data2/                     # ChromaDB 입력 데이터 (JSON)
+│   ├── anger.json             # 분노 감정 도서/음악 데이터
+│   ├── anxiety.json           # 불안 감정 도서/음악 데이터
+│   ├── excitement.json        # 설렘 감정 도서/음악 데이터
+│   ├── joy.json               # 기쁨 감정 도서/음악 데이터
+│   ├── normal.json            # 보통 감정 도서/음악 데이터
+│   └── sadness.json           # 슬픔 감정 도서/음악 데이터
 │
 ├── scripts/                   # 유틸리티 스크립트
-│   └── mk_data_db.py          # ChromaDB 벡터 DB 생성 스크립트
+│   └── mk_data_db.py          # ChromaDB 벡터 DB 생성 스크립트 (4305개 문서)
 │
 └── prompt/                    # 프롬프트 템플릿
     ├── __init__.py
@@ -86,14 +90,14 @@ BE/
 - **auth.py**: 회원가입, 로그인, 로그아웃
 - **user.py**: 프로필 조회/수정, 비밀번호 변경, 캐릭터 설정
 - **diary.py**: 일기 CRUD (7개 엔드포인트)
-- **chat.py**: AI 챗봇, 추천, 대화 CRUD (10개 엔드포인트)
-- **community.py**: 게시판/댓글 CRUD, 좋아요 (9개 엔드포인트)
+- **chat.py**: AI 챗봇 완전 통합 (대화 + 자동 저장), 대화 CRUD, 일기 분석 (8개 엔드포인트)
+- **community.py**: 게시판/댓글 CRUD, 좋아요 (10개 엔드포인트)
 - **challenge.py**: 챌린지 시스템 (7개 엔드포인트)
 
 ### app/crud/ - Database 로직
-- **user.py**: 사용자 생성, 조회, 수정
+- **user.py**: 사용자 생성, 조회, 수정 (get_user_by_id 추가)
 - **diary.py**: 일기 CRUD 로직
-- **chat.py**: 대화방/메시지 CRUD 로직
+- **chat.py**: 대화방/메시지 CRUD 로직 (자동 저장, 캐릭터 자동 조회)
 - **community.py**: 게시판/댓글 CRUD, 익명 번호 부여
 - **challenge.py**: 챌린지 선택/완료, 마일리지 지급, 리셋 로직
 
@@ -143,7 +147,8 @@ BE/
 ### 2. AI 모듈 분리
 - **ai_core/**: AI 기능만 독립적으로 관리
 - LangChain 기반 프롬프트 템플릿 중앙화
-- ChromaDB 벡터 DB로 RAG 기반 추천
+- ChromaDB 벡터 DB로 RAG 기반 추천 (4305개 문서)
+- AI 대화와 DB 저장 완전 통합
 - 패키지 구조로 명확한 의존성
 - 테스트 및 확장 용이
 
@@ -178,7 +183,7 @@ from data.recommendation_data import RECOMMENDATIONS
 ## ChromaDB 벡터 DB 생성
 
 ```bash
-# 1. data2/ 폴더에 JSON 파일 준비
+# 1. data2/ 폴더에 JSON 파일 준비 (6개 감정별 데이터)
 # 각 JSON 파일 구조:
 # {
 #   "emotion": "joy",
@@ -189,8 +194,11 @@ from data.recommendation_data import RECOMMENDATIONS
 
 # 2. 벡터 DB 생성 스크립트 실행
 python scripts/mk_data_db.py
+# 또는
+python -m scripts.mk_data_db
 
 # 생성 위치: ai_core/vector_db/chroma_vectordb/
+# 총 4305개 문서 생성됨
 ```
 
 ## 개발 가이드
