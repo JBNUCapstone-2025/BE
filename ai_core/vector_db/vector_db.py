@@ -34,17 +34,15 @@ try:
 
     try:
         total = vectordb._collection.count()
-        print(f"📌 DEBUG: Chroma 컬렉션 문서 개수 = {total}")
+        print(f"DEBUG: Chroma 컬렉션 문서 개수 = {total}")
         sample = vectordb.similarity_search("테스트", k=1)
-        print("📌 DEBUG: 샘플 검색 결과 =", sample)
+        print("DEBUG: 샘플 검색 결과 =", sample)
     except Exception as inner_e:
-        print("📌 DEBUG: vectordb 상태 확인 중 에러:", inner_e)
+        print("DEBUG: vectordb 상태 확인 중 에러:", inner_e)
 
-    with open(os.path.join(DATA_DIR, "emotion_data.pkl"), "rb") as f:
-        db_data = pickle.load(f)
-
-    EMOTIONS = db_data["emotions"]
-    EMOTION_DATA = db_data["data"]
+    # emotion_data.pkl은 더 이상 사용하지 않음 (레거시)
+    EMOTIONS = []
+    EMOTION_DATA = {}
  
 except Exception as e:
     vectordb = None
@@ -141,7 +139,7 @@ def get_recommendation_by_emotion(emotion_query: str, conversation: str = "", ca
     if category:
         filter_dict["category"] = category         # 예: "도서" / "음악"
 
-    print("📌 DEBUG filter:", filter_dict)
+    print("DEBUG filter:", filter_dict)
     
     where = {
         "$and": [
@@ -178,7 +176,7 @@ def get_recommendation_by_emotion(emotion_query: str, conversation: str = "", ca
     # query와 유사한 문서 찾기 (rag)
     # docs : List[Document] = vectordb.similarity_search(query, k=10, filter={"emotion_group":emotion_group})
 
-    print(f"📌 DEBUG: emotion_query={emotion_query}, category = {category}, 결과 개수={len(docs)}")
+    print(f"DEBUG: emotion_query={emotion_query}, category = {category}, 결과 개수={len(docs)}")
 
     # random.shuffle(docs)
     

@@ -5,9 +5,10 @@
 - 유사도 계산
 """
 
-from .vector_db import find_dissimilar_emotion_key, get_random_content
+from .vector_db import find_dissimilar_emotion_key, get_random_content, get_recommendation_by_emotion
 
 __all__ = [
     'find_dissimilar_emotion_key',
-    'get_random_content'
+    'get_random_content',
+    'get_recommendation_by_emotion'
 ]

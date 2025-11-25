@@ -5,6 +5,11 @@ from app.schemas.user import UserSignupRequest
 from app.core.security import get_password_hash
 
 
+def get_user_by_id(db: Session, user_id: int):
+    """user_id로 유저 조회"""
+    return db.query(User).filter(User.user_id == user_id).first()
+
+
 def get_user_by_username(db: Session, username: str):
     """username으로 유저 조회"""
     return db.query(User).filter(User.username == username).first()

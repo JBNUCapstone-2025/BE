@@ -121,7 +121,7 @@ def format_book_recommendation(data: Dict) -> str:
     author = rec.metadata.get("author", "")
     description = rec.page_content if hasattr(rec, "page_content") else ""
 
-    result = f"📚 {title}"
+    result = f"{title}"
     if author:
         result += f"\n저자: {author}"
     if description:
@@ -145,7 +145,7 @@ def format_music_recommendation(data: Dict) -> str:
     artist = rec.metadata.get("artist", "")
     album = rec.metadata.get("album", "")
 
-    result = f"🎵 {title}"
+    result = f"{title}"
     if artist:
         result += f"\n아티스트: {artist}"
     if album:
@@ -167,7 +167,7 @@ def format_food_recommendation(data: Dict) -> str:
     description = rec.get("description", "")
     category_type = rec.get("category", "")
 
-    result = f"🍽️ {name}"
+    result = f"{name}"
     if category_type:
         result += f" ({category_type})"
     if description:

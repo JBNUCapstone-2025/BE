@@ -31,8 +31,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(diary.router)
-app.include_router(chat.router)
-app.include_router(chat.chat_router)  # Chat CRUD 라우터
+app.include_router(chat.router)  # Chat 통합 라우터 (/chat)
+app.include_router(chat.ai_router)  # AI 분석 라우터 (/api/analyze-diary)
 app.include_router(community.router)  # Community 라우터
 app.include_router(challenge.router, prefix="/challenge", tags=["Challenge"])  # Challenge 라우터
 
@@ -41,7 +41,7 @@ app.include_router(challenge.router, prefix="/challenge", tags=["Challenge"])  #
 def read_root():
     """API 서버 상태 확인"""
     return {
-        "message": "✅ ICSYF 서버가 성공적으로 실행되었습니다!",
+        "message": "ICSYF 서버가 성공적으로 실행되었습니다!",
         "version": "2.0.0",
         "features": [
             "AI 챗봇 (감정 분석 + 캐릭터 대화)",

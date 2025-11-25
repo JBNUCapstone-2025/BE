@@ -12,22 +12,22 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
 
-# ✅ .env 불러오기
+# .env 불러오기
 load_dotenv()
 
-# ✅ 환경변수에서 API 키 가져오기
+# 환경변수에서 API 키 가져오기
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
-    raise ValueError("❌ OPENAI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+    raise ValueError("OPENAI_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
 google_api_key = os.getenv("GOOGLE_API_KEY")
 if not google_api_key:
-    raise ValueError("❌ GOOGLE_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+    raise ValueError("GOOGLE_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
-# ✅ OpenAI 클라이언트 초기화
+# OpenAI 클라이언트 초기화
 client = OpenAI(api_key=api_key)
 
-# ✅ Google AI 초기화
+# Google AI 초기화
 genai.configure(api_key=google_api_key)
 
 

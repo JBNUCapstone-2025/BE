@@ -108,9 +108,9 @@ if __name__ == "__main__":
     # # [Document(metadata={'product_id', 'title','detail_url', 'tags': [], 'emotion_group'}, page_content='제목, 저자, 출판사, 키워드/태그,출간일,가격, 상세보기)]
     docs = load_book_docs_from_dir(JSON_DIR) 
 
-    print("📌 DEBUG: docs count =", len(docs))
+    print("DEBUG: docs count =", len(docs))
     if len(docs) > 0:
-        print("📌 DEBUG: sample doc =", docs[0])
+        print("DEBUG: sample doc =", docs[0])
     vectordb = build_vectordb(docs)
 
 # ===============================================
