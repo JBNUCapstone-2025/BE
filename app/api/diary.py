@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from typing import List
+import openai
 from app.core.deps import get_db, get_current_user_id
 from app.schemas.diary import (
     DiaryCreateRequest, DiaryCreateResponse, DiaryResponse,
@@ -13,6 +15,10 @@ from app.crud.diary import (
     update_diary, delete_diary
 )
 from app.db.models import User
+
+# AI 기능 import
+from ai_core.llm import extract_emotion, get_embedding
+from ai_core.recommendation import get_smart_recommendation
 
 router = APIRouter(prefix="/diary", tags=["Diary"])
 
@@ -174,3 +180,136 @@ def delete_diary_endpoint(
             detail="일기를 찾을 수 없습니다"
         )
     return None
+
+
+@router.post("/{diary_id}/complete", response_model=DiaryResponse)
+async def complete_diary(
+    diary_id: int,
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user_id)
+):
+    """
+    일기 완성 - AI 감정 분석 및 추천
+    1. 일기 내용에서 감정 추출
+    2. 감정 기반 스마트 추천 (도서 2개, 음악 2개, 식사 2개)
+    3. Diary 테이블에 emotion, recommend_content 저장
+
+    **주의: 이미 완성된 일기는 재분석 불가**
+    """
+    try:
+        # 1. 일기 조회
+        diary = get_diary_by_id(db, diary_id, user_id)
+        if not diary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="일기를 찾을 수 없습니다"
+            )
+
+        # 2. 이미 완성된 일기인지 체크
+        if diary.emotion is not None or diary.recommend_content is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 완성된 일기입니다"
+            )
+
+        # 3. 감정 추출
+        emotion = extract_emotion(diary.content)
+
+        # 4. 감정 임베딩 생성 (필요 시)
+        emotion_vector = get_embedding(emotion)
+        if emotion_vector is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="감정 분석에 실패했습니다"
+            )
+
+        # 5. 의미 기반 스마트 추천
+        selected_books = get_smart_recommendation(
+            user_text=diary.content,
+            emotion=emotion,
+            category="도서",
+            top_k=2
+        )
+
+        selected_music = get_smart_recommendation(
+            user_text=diary.content,
+            emotion=emotion,
+            category="음악",
+            top_k=2
+        )
+
+        selected_food = get_smart_recommendation(
+            user_text=diary.content,
+            emotion=emotion,
+            category="식사",
+            top_k=2
+        )
+
+        # 6. 감정별 메시지 생성
+        emotion_messages = {
+            "기쁨": "오늘 정말 좋은 하루를 보내셨네요! 이 기분을 더 오래 간직할 수 있는 콘텐츠를 추천해드려요.",
+            "설렘": "설레는 마음이 느껴지네요! 이 기분을 더욱 풍성하게 만들어줄 콘텐츠를 준비했어요.",
+            "보통": "평온한 하루를 보내셨네요. 이 평화로움을 유지할 수 있는 콘텐츠예요.",
+            "슬픔": "힘든 하루였군요. 위로가 되는 콘텐츠로 마음을 다독여보세요.",
+            "분노": "화가 많이 나셨나봐요. 스트레스를 해소할 수 있는 콘텐츠를 준비했어요.",
+            "불안": "불안한 마음이 느껴지네요. 마음을 진정시킬 수 있는 콘텐츠를 추천드려요."
+        }
+
+        message = emotion_messages.get(emotion, "오늘 하루의 감정을 바탕으로 추천을 준비했어요.")
+
+        # 7. recommend_content 생성 (첫 번째 추천만 저장)
+        recommend_content = {}
+        if selected_books:
+            recommend_content["book"] = selected_books[0].get("title", "")
+        if selected_music:
+            recommend_content["music"] = selected_music[0].get("title", "")
+        if selected_food:
+            recommend_content["food"] = selected_food[0].get("title", "")
+
+        # 8. DB 저장
+        diary.emotion = emotion
+        diary.recommend_content = recommend_content
+        db.commit()
+        db.refresh(diary)
+
+        # 9. 응답 (분석 결과 포함)
+        response_data = DiaryResponse.model_validate(diary)
+        # 추가 정보를 response에 포함 (Pydantic 모델 외부)
+        return {
+            **response_data.model_dump(),
+            "analysis": {
+                "emotion": emotion,
+                "message": message,
+                "books": selected_books,
+                "music": selected_music,
+                "food": selected_food
+            }
+        }
+
+    except HTTPException:
+        raise
+    except openai.APIError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"OpenAI API 오류가 발생했습니다: {str(e)}"
+        )
+    except openai.RateLimitError:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요"
+        )
+    except openai.AuthenticationError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="AI 서비스 인증 오류가 발생했습니다"
+        )
+    except SQLAlchemyError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"데이터베이스 오류가 발생했습니다: {str(e)}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"일기 분석 중 오류가 발생했습니다: {str(e)}"
+        )

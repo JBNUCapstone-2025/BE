@@ -34,9 +34,6 @@ from app.schemas.chat import (
 # 통합 라우터
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-# AI 분석 라우터 (일기 분석용)
-ai_router = APIRouter(prefix="/api", tags=["AI Analysis"])
-
 
 class ChatRequest(BaseModel):
     sentence: str
@@ -53,11 +50,6 @@ class ChatCompleteRequest(BaseModel):
         if v not in allowed:
             raise ValueError(f"category는 {allowed} 중 하나여야 합니다")
         return v
-
-
-class DiaryAnalysisRequest(BaseModel):
-    diary: str
-    class_type: str = "일반"
 
 
 @router.post("/message")
@@ -200,90 +192,6 @@ async def chat(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"챗봇 응답 생성 중 오류가 발생했습니다: {str(e)}"
-        )
-
-
-@ai_router.post("/analyze-diary")
-async def analyze_diary(request: DiaryAnalysisRequest):
-    """
-    일기 분석 및 감정 기반 지능형 추천
-    1. 일기에서 감정 추출
-    2. 감정 벡터를 만들어 반대 감정 찾기
-    3. 일기 내용과 가장 관련성 높은 콘텐츠를 의미 기반으로 추천
-    """
-    try:
-        # 1. 감정 추출
-        emotion = extract_emotion(request.diary)
-
-        # 2. 감정 임베딩 생성
-        emotion_vector = get_embedding(emotion)
-        if emotion_vector is None:
-            return {"error": "감정 분석에 실패했습니다."}
-
-        # 3. 의미 기반 스마트 추천
-        from ai_core.recommendation import get_smart_recommendation
-
-        selected_books = get_smart_recommendation(
-            user_text=request.diary,
-            emotion=emotion,
-            category="도서",
-            top_k=2
-        )
-
-        selected_music = get_smart_recommendation(
-            user_text=request.diary,
-            emotion=emotion,
-            category="음악",
-            top_k=2
-        )
-
-        selected_food = get_smart_recommendation(
-            user_text=request.diary,
-            emotion=emotion,
-            category="식사",
-            top_k=2
-        )
-
-        # 4. 감정에 따른 메시지 생성
-        emotion_messages = {
-            "기쁨": "오늘 정말 좋은 하루를 보내셨네요! 이 기분을 더 오래 간직할 수 있는 콘텐츠를 추천해드려요.",
-            "설렘": "설레는 마음이 느껴지네요! 이 기분을 더욱 풍성하게 만들어줄 콘텐츠를 준비했어요.",
-            "보통": "평온한 하루를 보내셨네요. 이 평화로움을 유지할 수 있는 콘텐츠예요.",
-            "슬픔": "힘든 하루였군요. 위로가 되는 콘텐츠로 마음을 다독여보세요.",
-            "분노": "화가 많이 나셨나봐요. 스트레스를 해소할 수 있는 콘텐츠를 준비했어요.",
-            "불안": "불안한 마음이 느껴지네요. 마음을 진정시킬 수 있는 콘텐츠를 추천드려요."
-        }
-
-        message = emotion_messages.get(emotion, "오늘 하루의 감정을 바탕으로 추천을 준비했어요.")
-
-        return {
-            "emotion": emotion,
-            "emotion": emotion,  # AI 개발자 버전에 중복 필드 있음
-            "message": message,
-            "books": selected_books,
-            "music": selected_music,
-            "food": selected_food
-        }
-
-    except openai.APIError as e:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"OpenAI API 오류가 발생했습니다: {str(e)}"
-        )
-    except openai.RateLimitError:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요"
-        )
-    except openai.AuthenticationError:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="AI 서비스 인증 오류가 발생했습니다"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"일기 분석 중 오류가 발생했습니다: {str(e)}"
         )
 
 
