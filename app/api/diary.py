@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 import openai
 from app.core.deps import get_db, get_current_user_id
@@ -40,11 +40,17 @@ def create_diary_endpoint(
 
     new_diary = create_diary(db, user_id, diary)
 
-    # 일기 작성 시 챌린지 기회 증가 + 작성 날짜 기록
+    # 일기 작성 시 챌린지 기회 증가 (오늘 또는 어제 일기만)
     user = db.query(User).filter(User.user_id == user_id).first()
     if user:
-        user.available_challenges += 1
-        user.last_diary_date = diary.diary_date  # 일기 작성 날짜 기록
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+
+        # 오늘 또는 어제 일기만 챌린지 기회 부여
+        if diary.diary_date in [today, yesterday]:
+            user.available_challenges += 1
+            user.last_diary_date = today  # 실제 작성 날짜 기록
+
         db.commit()
 
     return {"message": "일기가 작성되었습니다", "diary": new_diary}

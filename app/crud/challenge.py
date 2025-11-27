@@ -290,6 +290,9 @@ def complete_challenge(
     challenge.content = content
     challenge.completed_date = date.today()
 
+    # DB에 flush하여 is_completed 변경사항 즉시 반영
+    db.flush()
+
     user = db.query(User).filter(User.user_id == user_id).first()
 
     # 전체 완료 개수 확인 (방금 완료한 것 포함)
@@ -298,8 +301,8 @@ def complete_challenge(
         Challenge.is_completed == True
     ).count()
 
-    # 5개 완료마다 마일리지 지급 (0개일 때는 제외)
-    if total_completed > 0 and total_completed % CHALLENGES_FOR_MILEAGE == 0:
+    # 5개 완료마다 마일리지 지급
+    if total_completed % CHALLENGES_FOR_MILEAGE == 0:
         mileage_amount = random.randint(MILEAGE_MIN, MILEAGE_MAX)
         user.mileage += mileage_amount
 
