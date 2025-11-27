@@ -86,17 +86,17 @@ BE/
 - **security.py**: JWT 토큰 생성/검증, 비밀번호 해싱
 - **constants.py**: 챌린지 풀, 대륙 정보, 설정값
 
-### app/api/ - API 엔드포인트 (7개 라우터)
+### app/api/ - API 엔드포인트 (6개 라우터)
 - **auth.py**: 회원가입, 로그인, 로그아웃
 - **user.py**: 프로필 조회/수정, 비밀번호 변경, 캐릭터 설정
-- **diary.py**: 일기 CRUD (7개 엔드포인트)
-- **chat.py**: AI 챗봇 완전 통합 (대화 + 자동 저장), 대화 CRUD, 일기 분석 (8개 엔드포인트)
+- **diary.py**: 일기 작성/조회/수정, AI 완료 (7개 엔드포인트, 삭제 불가)
+- **chat.py**: AI 챗봇 완전 통합 (대화 + 자동 저장), 대화 CRUD (7개 엔드포인트)
 - **community.py**: 게시판/댓글 CRUD, 좋아요 (10개 엔드포인트)
 - **challenge.py**: 챌린지 시스템 (7개 엔드포인트)
 
 ### app/crud/ - Database 로직
 - **user.py**: 사용자 생성, 조회, 수정 (get_user_by_id 추가)
-- **diary.py**: 일기 CRUD 로직
+- **diary.py**: 일기 생성/조회/수정 로직 (삭제 함수 제거)
 - **chat.py**: 대화방/메시지 CRUD 로직 (자동 저장, 캐릭터 자동 조회)
 - **community.py**: 게시판/댓글 CRUD, 익명 번호 부여
 - **challenge.py**: 챌린지 선택/완료, 마일리지 지급, 리셋 로직
@@ -125,16 +125,16 @@ BE/
 
 ## 데이터베이스 테이블 (10개)
 
-1. **User**: 사용자 정보, 캐릭터, 챌린지 필드
-2. **Diary**: 일기, AI 감정 분석 결과, 추천 콘텐츠
-3. **Chat**: 대화방, 감정 분석 결과
+1. **User**: 사용자 정보, 캐릭터, 챌린지 필드 (available_challenges, last_diary_date)
+2. **Diary**: 일기, AI 감정 분석 결과, 추천 콘텐츠 (1개 카테고리만)
+3. **Chat**: 대화방, 감정 분석 결과, 추천 콘텐츠 (1개 카테고리만)
 4. **Message**: 메시지 이력, 캐릭터 변경 추적
 5. **Board**: 게시글 (6개 카테고리)
 6. **Comment**: 댓글/대댓글 (2단계)
 7. **BoardLike**: 게시글 좋아요
 8. **CommentLike**: 댓글 좋아요
 9. **Continent**: 6개 대륙 정보
-10. **Challenge**: 사용자별 챌린지 (60개)
+10. **Challenge**: 사용자별 챌린지 (60개, source_diary_date 포함)
 
 ## 주요 특징
 
