@@ -49,10 +49,16 @@ def load_book_docs_from_dir(directory: str) -> list[Document]:
                 metadata = {
                     "emotion": emotion,
                     "emotion_kr": emotion_kr,
-                    "category": "도서",  
+                    "category": "도서",
+                    "product_id": b.get("product_id", ""),
+                    "isbn": b.get("isbn", ""),
                     "title": b.get("title", ""),
                     "author": b.get("author", ""),
                     "publisher": b.get("publisher", ""),
+                    "pub_date": b.get("pub_date", ""),
+                    "subtitle": b.get("subtitle", ""),
+                    "price": b.get("price", ""),
+                    "tags": json.dumps(b.get("tags", []), ensure_ascii=False),  # JSON 문자열로 변환
                     "detail_url": b.get("detail_url", ""),
                     "cover_image_url": b.get("cover_image_url", ""),
                 }
@@ -76,13 +82,16 @@ def load_book_docs_from_dir(directory: str) -> list[Document]:
                     "emotion": emotion,
                     "emotion_kr": emotion_kr,
                     "category": "음악",
+                    "song_id": m.get("song_id", ""),
                     "title": m.get("title", ""),
                     "artist": m.get("artist", ""),
                     "album": m.get("album", ""),
+                    "cover_url": m.get("cover_url", ""),
                     "detail_url": m.get("detail_url", ""),
-                    "cover_image_url": m.get("cover_url", ""),
+                    "genre": m.get("genre", ""),
+                    "dj_tags": json.dumps(m.get("dj_tags", []), ensure_ascii=False),  # JSON 문자열로 변환
                 }
-                
+
                 docs.append(Document(page_content = page_content, metadata = metadata))
 
     return docs

@@ -7,15 +7,14 @@ from typing import List, Optional
 
 
 def create_diary(db: Session, user_id: int, diary: DiaryCreateRequest) -> Diary:
-    """일기 생성"""
+    """일기 생성 (emotion, recommend_content는 complete 시 추가)"""
     try:
         db_diary = Diary(
             user_id=user_id,
             title=diary.title,
             content=diary.content,
-            diary_date=diary.diary_date,
-            emotion=diary.emotion,
-            recommend_content=diary.recommend_content
+            diary_date=diary.diary_date
+            # emotion, recommend_content는 complete 시 추가됨
         )
         db.add(db_diary)
         db.commit()
@@ -81,16 +80,3 @@ def update_diary(db: Session, diary_id: int, user_id: int, diary_update: DiaryUp
         raise
 
 
-def delete_diary(db: Session, diary_id: int, user_id: int) -> bool:
-    """일기 삭제"""
-    try:
-        db_diary = get_diary_by_id(db, diary_id, user_id)
-        if not db_diary:
-            return False
-
-        db.delete(db_diary)
-        db.commit()
-        return True
-    except Exception as e:
-        db.rollback()
-        raise

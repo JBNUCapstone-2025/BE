@@ -7,18 +7,19 @@ import openai
 from app.core.deps import get_db, get_current_user_id
 from app.schemas.diary import (
     DiaryCreateRequest, DiaryCreateResponse, DiaryResponse,
-    DiaryUpdateRequest, DiaryListResponse, DiaryCalendarResponse
+    DiaryUpdateRequest, DiaryListResponse, DiaryCalendarResponse,
+    DiaryCompleteRequest, DiaryCompleteResponse
 )
 from app.crud.diary import (
     create_diary, get_diary_by_id, get_diary_by_date,
     get_diaries_by_user, get_diaries_by_month,
-    update_diary, delete_diary
+    update_diary
 )
 from app.db.models import User
 
 # AI 기능 import
-from ai_core.llm import extract_emotion, get_embedding
-from ai_core.recommendation import get_smart_recommendation
+from ai_core.llm import extract_emotion
+from ai_core.vector_db import get_recommendation_by_emotion
 
 router = APIRouter(prefix="/diary", tags=["Diary"])
 
@@ -39,19 +40,6 @@ def create_diary_endpoint(
         )
 
     new_diary = create_diary(db, user_id, diary)
-
-    # 일기 작성 시 챌린지 기회 증가 (오늘 또는 어제 일기만)
-    user = db.query(User).filter(User.user_id == user_id).first()
-    if user:
-        today = datetime.now().date()
-        yesterday = today - timedelta(days=1)
-
-        # 오늘 또는 어제 일기만 챌린지 기회 부여
-        if diary.diary_date in [today, yesterday]:
-            user.available_challenges += 1
-            user.last_diary_date = today  # 실제 작성 날짜 기록
-
-        db.commit()
 
     return {"message": "일기가 작성되었습니다", "diary": new_diary}
 
@@ -152,16 +140,34 @@ def update_diary_endpoint(
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ):
-    """일기 수정"""
-    # 날짜를 변경하는 경우, 해당 날짜에 이미 다른 일기가 있는지 확인
+    """
+    일기 수정 (제목, 내용만 수정 가능)
+
+    **주의:**
+    - complete 후에는 수정 불가
+    - 날짜 변경 불가 (title, content만 수정 가능)
+    """
+    # 일기 조회
+    diary = get_diary_by_id(db, diary_id, user_id)
+    if not diary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="일기를 찾을 수 없습니다"
+        )
+
+    # complete 후에는 수정 불가
+    if diary.emotion is not None or diary.recommend_content is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="완료된 일기는 수정할 수 없습니다"
+        )
+
+    # 날짜 변경 시도 시 에러
     if diary_update.diary_date is not None:
-        existing_diary = get_diary_by_date(db, user_id, diary_update.diary_date)
-        # 같은 날짜에 다른 일기가 있고, 그게 현재 수정하려는 일기가 아닌 경우
-        if existing_diary and existing_diary.diary_id != diary_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{diary_update.diary_date} 날짜에 이미 일기가 존재합니다"
-            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="일기 날짜는 변경할 수 없습니다"
+        )
 
     updated_diary = update_diary(db, diary_id, user_id, diary_update)
     if not updated_diary:
@@ -172,32 +178,17 @@ def update_diary_endpoint(
     return updated_diary
 
 
-@router.delete("/{diary_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_diary_endpoint(
-    diary_id: int,
-    db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user_id)
-):
-    """일기 삭제"""
-    success = delete_diary(db, diary_id, user_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="일기를 찾을 수 없습니다"
-        )
-    return None
-
-
-@router.post("/{diary_id}/complete", response_model=DiaryResponse)
+@router.post("/{diary_id}/complete", response_model=DiaryCompleteResponse)
 async def complete_diary(
     diary_id: int,
+    request: DiaryCompleteRequest,
     db: Session = Depends(get_db),
     user_id: int = Depends(get_current_user_id)
 ):
     """
-    일기 완성 - AI 감정 분석 및 추천
-    1. 일기 내용에서 감정 추출
-    2. 감정 기반 스마트 추천 (도서 2개, 음악 2개, 식사 2개)
+    일기 분석 및 감정 기반 지능형 추천 (카테고리 선택)
+    1. 일기에서 감정 추출
+    2. 선택한 카테고리의 추천 콘텐츠 3개 생성
     3. Diary 테이블에 emotion, recommend_content 저장
 
     **주의: 이미 완성된 일기는 재분석 불가**
@@ -221,56 +212,38 @@ async def complete_diary(
         # 3. 감정 추출
         emotion = extract_emotion(diary.content)
 
-        # 4. 감정 임베딩 생성 (필요 시)
-        emotion_vector = get_embedding(emotion)
-        if emotion_vector is None:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="감정 분석에 실패했습니다"
-            )
+        # 4. 카테고리 매핑
+        category_map = {
+            "book": "도서",
+            "music": "음악",
+            "food": "식사"
+        }
+        selected_category_kr = category_map.get(request.category, "도서")
 
-        # 5. 의미 기반 스마트 추천
-        selected_books = get_smart_recommendation(
-            user_text=diary.content,
-            emotion=emotion,
-            category="도서",
-            top_k=2
-        )
-
-        selected_music = get_smart_recommendation(
-            user_text=diary.content,
-            emotion=emotion,
-            category="음악",
-            top_k=2
-        )
-
-        selected_food = get_smart_recommendation(
-            user_text=diary.content,
-            emotion=emotion,
-            category="식사",
-            top_k=2
+        # 5. RAG 기반 추천 (선택한 카테고리 1개만)
+        recommendations = get_recommendation_by_emotion(
+            emotion_query=emotion,
+            conversation=diary.content,
+            category=selected_category_kr,
+            k=1
         )
 
         # 6. 감정별 메시지 생성
         emotion_messages = {
-            "기쁨": "오늘 정말 좋은 하루를 보내셨네요! 이 기분을 더 오래 간직할 수 있는 콘텐츠를 추천해드려요.",
-            "설렘": "설레는 마음이 느껴지네요! 이 기분을 더욱 풍성하게 만들어줄 콘텐츠를 준비했어요.",
-            "보통": "평온한 하루를 보내셨네요. 이 평화로움을 유지할 수 있는 콘텐츠예요.",
-            "슬픔": "힘든 하루였군요. 위로가 되는 콘텐츠로 마음을 다독여보세요.",
-            "분노": "화가 많이 나셨나봐요. 스트레스를 해소할 수 있는 콘텐츠를 준비했어요.",
-            "불안": "불안한 마음이 느껴지네요. 마음을 진정시킬 수 있는 콘텐츠를 추천드려요."
+            "기쁨": "오늘 정말 행복한 하루를 보내셨네요! 이 좋은 기분을 더 오래 간직할 수 있는 콘텐츠를 추천해드릴게요.",
+            "설렘": "두근거리는 하루였군요! 이 설레는 마음이 더 풍성해질 수 있도록 잘 어울리는 콘텐츠를 골라봤어요.",
+            "보통": "무난하고 평온한 하루였네요. 지금의 안정된 기분을 부드럽게 이어갈 수 있는 콘텐츠를 추천해드릴게요.",
+            "슬픔": "마음이 조금 무거운 하루였겠어요. 조금이라도 위로가 되는 따뜻한 콘텐츠를 준비했어요.",
+            "분노": "많이 답답하고 화가 나는 일이 있었나봐요. 마음을 풀고 스트레스를 덜어낼 수 있는 콘텐츠를 추천해드릴게요.",
+            "불안": "불안한 마음이 느껴져요. 긴장을 조금 내려놓고 마음이 편안해질 수 있는 콘텐츠를 골라드릴게요."
         }
 
         message = emotion_messages.get(emotion, "오늘 하루의 감정을 바탕으로 추천을 준비했어요.")
 
-        # 7. recommend_content 생성 (첫 번째 추천만 저장)
+        # 7. recommend_content 생성 (첫 번째 추천만 DB 저장)
         recommend_content = {}
-        if selected_books:
-            recommend_content["book"] = selected_books[0].get("title", "")
-        if selected_music:
-            recommend_content["music"] = selected_music[0].get("title", "")
-        if selected_food:
-            recommend_content["food"] = selected_food[0].get("title", "")
+        if recommendations:
+            recommend_content[request.category] = recommendations[0].metadata.get("title", "")
 
         # 8. DB 저장
         diary.emotion = emotion
@@ -278,17 +251,45 @@ async def complete_diary(
         db.commit()
         db.refresh(diary)
 
-        # 9. 응답 (분석 결과 포함)
-        response_data = DiaryResponse.model_validate(diary)
-        # 추가 정보를 response에 포함 (Pydantic 모델 외부)
+        # 9. 챌린지 기회 증가 (오늘 또는 어제 일기만)
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if user:
+            today = datetime.now().date()
+            yesterday = today - timedelta(days=1)
+            if diary.diary_date in [today, yesterday]:
+                user.available_challenges += 1
+                user.last_diary_date = today
+            db.commit()
+
+        # 10. 응답 형식 (1개만)
+        recommendation_data = None
+        if recommendations:
+            doc = recommendations[0]
+
+            # metadata 복사 및 tags/dj_tags를 배열로 변환
+            metadata = doc.metadata.copy()
+            if "tags" in metadata and isinstance(metadata["tags"], str):
+                import json
+                metadata["tags"] = json.loads(metadata["tags"])
+            if "dj_tags" in metadata and isinstance(metadata["dj_tags"], str):
+                import json
+                metadata["dj_tags"] = json.loads(metadata["dj_tags"])
+
+            recommendation_data = {
+                "id": doc.id if hasattr(doc, 'id') else "",
+                "metadata": metadata,
+                "page_content": doc.page_content,
+                "type": "Document"
+            }
+
+        # 11. 응답
         return {
-            **response_data.model_dump(),
-            "analysis": {
+            "emotion": emotion,
+            "message": message,
+            "recommendation": {
+                "category": selected_category_kr,  # 한글 카테고리
                 "emotion": emotion,
-                "message": message,
-                "books": selected_books,
-                "music": selected_music,
-                "food": selected_food
+                "recommendation": recommendation_data
             }
         }
 

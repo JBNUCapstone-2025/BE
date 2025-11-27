@@ -403,11 +403,27 @@ async def complete_chat(
                 detail="추천 생성에 실패했습니다"
             )
 
-        # 7. recommend_content 생성
+        # 7. recommend_content 생성 (모든 필드 포함)
         rec_doc = recommendations[0]
-        rec_title = rec_doc.metadata.get("title", "")
 
-        recommend_content = {request.category: rec_title}
+        # metadata 복사 및 tags/dj_tags를 배열로 변환
+        metadata = rec_doc.metadata.copy()
+        if "tags" in metadata and isinstance(metadata["tags"], str):
+            import json
+            metadata["tags"] = json.loads(metadata["tags"])
+        if "dj_tags" in metadata and isinstance(metadata["dj_tags"], str):
+            import json
+            metadata["dj_tags"] = json.loads(metadata["dj_tags"])
+
+        # 전체 Document 정보 저장
+        recommend_content = {
+            request.category: {
+                "id": rec_doc.id if hasattr(rec_doc, 'id') else "",
+                "metadata": metadata,
+                "page_content": rec_doc.page_content,
+                "type": "Document"
+            }
+        }
 
         # 8. DB 저장
         db_chat.emotion = emotion
