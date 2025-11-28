@@ -20,21 +20,16 @@ class MessageCreateRequest(BaseModel):
     # character, character_name은 User 테이블에서 자동으로 조회
 
 
-# 대화 종료 시 감정/추천 저장 요청 스키마
+# 대화 종료 시 카테고리 선택 요청 스키마
 class ChatCompleteRequest(BaseModel):
-    emotion: str = Field(..., description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 보통)")
-    recommend_content: Union[
-        Dict[Literal["book"], str],
-        Dict[Literal["music"], str],
-        Dict[Literal["food"], str]
-    ] = Field(..., description="AI 추천 콘텐츠 (book, music, food 중 1개만)")
+    category: str = Field(..., description="추천 카테고리 (book, music, food 중 하나)")
 
-    @field_validator('emotion')
+    @field_validator('category')
     @classmethod
-    def validate_emotion(cls, v):
-        valid_emotions = ["기쁨", "슬픔", "분노", "불안", "설렘", "보통"]
-        if v not in valid_emotions:
-            raise ValueError(f'감정은 {", ".join(valid_emotions)} 중 하나여야 합니다')
+    def validate_category(cls, v):
+        valid_categories = ["book", "music", "food"]
+        if v not in valid_categories:
+            raise ValueError(f'카테고리는 {", ".join(valid_categories)} 중 하나여야 합니다')
         return v
 
 
@@ -59,11 +54,7 @@ class ChatResponse(BaseModel):
     user_id: int
     title: str
     emotion: Optional[str] = None
-    recommend_content: Optional[Union[
-        Dict[Literal["book"], str],
-        Dict[Literal["music"], str],
-        Dict[Literal["food"], str]
-    ]] = None
+    recommend_content: Optional[Dict[str, Any]] = None
     last_message_date: Optional[datetime] = None
     create_date: datetime
 
@@ -89,11 +80,7 @@ class ChatDetailResponse(BaseModel):
     user_id: int
     title: str
     emotion: Optional[str] = None
-    recommend_content: Optional[Union[
-        Dict[Literal["book"], str],
-        Dict[Literal["music"], str],
-        Dict[Literal["food"], str]
-    ]] = None
+    recommend_content: Optional[Dict[str, Any]] = None
     last_message_date: Optional[datetime] = None
     create_date: datetime
     messages: List[MessageResponse] = []

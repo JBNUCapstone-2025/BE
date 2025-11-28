@@ -240,10 +240,27 @@ async def complete_diary(
 
         message = emotion_messages.get(emotion, "오늘 하루의 감정을 바탕으로 추천을 준비했어요.")
 
-        # 7. recommend_content 생성 (첫 번째 추천만 DB 저장)
+        # 7. recommend_content 생성 (전체 객체 DB 저장)
         recommend_content = {}
         if recommendations:
-            recommend_content[request.category] = recommendations[0].metadata.get("title", "")
+            rec_doc = recommendations[0]
+
+            # metadata 복사 및 tags/dj_tags를 배열로 변환
+            metadata = rec_doc.metadata.copy()
+            if "tags" in metadata and isinstance(metadata["tags"], str):
+                import json
+                metadata["tags"] = json.loads(metadata["tags"])
+            if "dj_tags" in metadata and isinstance(metadata["dj_tags"], str):
+                import json
+                metadata["dj_tags"] = json.loads(metadata["dj_tags"])
+
+            # 전체 Document 정보 저장
+            recommend_content[request.category] = {
+                "id": rec_doc.id if hasattr(rec_doc, 'id') else "",
+                "metadata": metadata,
+                "page_content": rec_doc.page_content,
+                "type": "Document"
+            }
 
         # 8. DB 저장
         diary.emotion = emotion

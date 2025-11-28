@@ -24,7 +24,7 @@ class DiaryResponse(BaseModel):
     title: str
     content: str
     emotion: Optional[str] = Field(None, description="AI 분석 감정 결과 (기쁨, 슬픔, 분노, 불안, 설렘, 보통)")
-    recommend_content: Optional[Dict[str, str]] = Field(None, description="AI 추천 콘텐츠 (book, music, food 중 1개)")
+    recommend_content: Optional[Dict[str, Any]] = Field(None, description="AI 추천 콘텐츠 (book, music, food 중 1개)")
     diary_date: date
     create_date: datetime
     update_date: datetime
