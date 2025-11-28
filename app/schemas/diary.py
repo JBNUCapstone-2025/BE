@@ -53,7 +53,15 @@ class DiaryCreateResponse(BaseModel):
 
 # 일기 완료 요청 스키마 (카테고리 선택)
 class DiaryCompleteRequest(BaseModel):
-    category: Literal["book", "music", "food"] = Field(..., description="추천 받을 카테고리 (book, music, food 중 1개)")
+    category: str = Field(..., description="추천 받을 카테고리 (book, music, food 중 1개)")
+
+    @field_validator('category')
+    @classmethod
+    def validate_category(cls, v):
+        valid_categories = ["book", "music", "food"]
+        if v not in valid_categories:
+            raise ValueError(f"카테고리는 {', '.join(valid_categories)} 중 하나여야 합니다")
+        return v
 
 
 # 일기 완료 응답 스키마 (AI 분석 완료 후)

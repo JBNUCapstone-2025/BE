@@ -216,7 +216,7 @@ async def complete_diary(
         category_map = {
             "book": "도서",
             "music": "음악",
-            "food": "식사"
+            "food": "음식"
         }
         selected_category_kr = category_map.get(request.category, "도서")
 

@@ -43,7 +43,7 @@ def get_content_embedding(content: Dict, category: str) -> str:
         description = content.get("description", "")
         return f"{title} {artist} {description}"
 
-    elif category == "식사":
+    elif category == "음식":
         name = content.get("name", "")
         description = content.get("description", "")
         category_type = content.get("category", "")

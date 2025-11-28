@@ -20,6 +20,8 @@ FastAPI 기반으로 구축된 백엔드 시스템입니다.
 - 하루 1개 일기 제한
 - 날짜별/월별 조회
 - AI 감정 분석 및 사용자 선택 카테고리 추천 (book/music/food 중 1개)
+- **전체 Document 객체 저장** (id, metadata, page_content, type 포함)
+- metadata의 tags/dj_tags JSON 문자열 자동 배열 변환
 - 일기 완료 시 챌린지 기회 증가 (오늘/어제 일기만)
 - complete 후 수정 불가, 날짜 변경 불가
 
@@ -28,7 +30,7 @@ FastAPI 기반으로 구축된 백엔드 시스템입니다.
 - 멀티턴 대화 지원 (LangChain 기반)
 - 실시간 감정 분석 (OpenAI API)
 - 캐릭터별 맞춤 말투
-- RAG 기반 스마트 추천 (도서, 음악, 식사)
+- RAG 기반 스마트 추천 (도서, 음악, 음식)
 - ChromaDB 벡터 DB (감정 + 카테고리 이중 필터링)
 - AI 대화와 DB 저장 완전 통합 (자동 저장)
 - 대화 히스토리 자동 로드
@@ -38,6 +40,8 @@ FastAPI 기반으로 구축된 백엔드 시스템입니다.
 - 메시지 자동 저장 (AI 응답과 동시)
 - 캐릭터 변경 이력 추적
 - 대화 종료 시 감정 분석 + 사용자 선택 카테고리 추천
+- **전체 Document 객체 저장** (id, metadata, page_content, type 포함)
+- metadata의 tags/dj_tags JSON 문자열 자동 배열 변환
 - 완료된 대화 재사용 방지
 
 ### 5. 커뮤니티 (익명 게시판)
@@ -107,14 +111,14 @@ BE/
 │   └── characters.py        # 동물 캐릭터 말투 정의
 ├── data/                    # 추천 데이터 (레거시, 참고용)
 ├── data2/                   # ChromaDB 입력 데이터 (JSON)
-│   ├── anger.json           # 분노 감정 도서/음악 데이터
-│   ├── anxiety.json         # 불안 감정 도서/음악 데이터
-│   ├── excitement.json      # 설렘 감정 도서/음악 데이터
-│   ├── joy.json             # 기쁨 감정 도서/음악 데이터
-│   ├── normal.json          # 보통 감정 도서/음악 데이터
-│   └── sadness.json         # 슬픔 감정 도서/음악 데이터
+│   ├── anger.json           # 분노 감정 도서/음악/음식 데이터
+│   ├── anxiety.json         # 불안 감정 도서/음악/음식 데이터
+│   ├── excitement.json      # 설렘 감정 도서/음악/음식 데이터
+│   ├── joy.json             # 기쁨 감정 도서/음악/음식 데이터
+│   ├── normal.json          # 보통 감정 도서/음악/음식 데이터
+│   └── sadness.json         # 슬픔 감정 도서/음악/음식 데이터
 ├── scripts/                 # 유틸리티 스크립트
-│   └── mk_data_db.py        # ChromaDB 생성 스크립트 (4305개 문서)
+│   └── mk_data_db.py        # ChromaDB 생성 스크립트 (4345개 문서)
 ├── create_tables.py         # DB 테이블 생성
 ├── requirements.txt
 └── .env
@@ -167,6 +171,15 @@ python create_tables.py
 python scripts/mk_data_db.py
 # 또는
 python -m scripts.mk_data_db
+
+# 생성 위치: ai_core/vector_db/chroma_vectordb/
+# 총 4345개 문서 생성됨 (도서 + 음악 + 음식)
+#
+# 각 JSON 파일: {"emotion": "joy", "emotion_kr": "기쁨", "books": [...], "musics": [...], "foods": [...]}
+# 스크립트 처리:
+# - books 배열 → category="도서" Document 생성
+# - musics 배열 → category="음악" Document 생성
+# - foods 배열 → category="음식" Document 생성
 ```
 
 ### 6. 서버 실행
@@ -261,7 +274,7 @@ docker logs -f icsyf-be-server
 # 테이블 생성
 docker exec -it icsyf-be-server python create_tables.py
 
-# 벡터 DB 생성 (ChromaDB - 4305개 문서)
+# 벡터 DB 생성 (ChromaDB - 4345개 문서: 도서 + 음악 + 음식)
 docker exec -it icsyf-be-server python -m scripts.mk_data_db
 
 # 재시작
@@ -320,7 +333,22 @@ docker-compose down
 
 ### 데이터 구조
 - **emotion**: 문자열 (단일 감정)
-- **recommend_content**: JSON ({"book": "제목"} or {"music": "제목"} or {"food": "제목"}, 1개만)
+- **recommend_content**: JSON - 전체 Document 객체 저장
+  ```json
+  {
+    "book": {
+      "id": "doc_id",
+      "metadata": {
+        "title": "책 제목",
+        "author": "저자",
+        "tags": ["태그1", "태그2"],  // JSON 문자열 → 배열 자동 변환
+        ...
+      },
+      "page_content": "상세 설명",
+      "type": "Document"
+    }
+  }
+  ```
 - **챌린지**: basic (최대 5개, 중복 불가), book/music/food 추천 챌린지
 
 ### 코드 품질

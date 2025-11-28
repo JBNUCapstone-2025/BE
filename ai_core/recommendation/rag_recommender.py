@@ -26,7 +26,7 @@ def get_rag_recommendation(conversation_history: str, category: str) -> Dict:
 
     Args:
         conversation_history: 최근 대화 내용
-        category: 추천 카테고리 (도서, 음악, 식사)
+        category: 추천 카테고리 (도서, 음악, 음식)
 
     Returns:
         추천 정보 딕셔너리
@@ -161,23 +161,23 @@ def format_music_recommendation(data: Dict) -> str:
 
 
 def format_food_recommendation(data: Dict) -> str:
-    """식사 추천 정보를 포맷팅합니다."""
+    """음식 추천 정보를 포맷팅합니다."""
     rec = data["recommendation"]
-    name = rec.get("name", "")
-    description = rec.get("description", "")
-    category_type = rec.get("category", "")
+    name = rec.metadata.get("name", "")
+    menu = rec.metadata.get("menu", "")
+    scope = rec.metadata.get("scope", "")
 
     result = f"{name}"
-    if category_type:
-        result += f" ({category_type})"
-    if description:
-        result += f"\n{description}"
+    if scope:
+        result += f"\n{scope}"
+    if menu:
+        result += f"\n{menu}"
 
     # 추가 추천도 포함
     if "all_recommendations" in data and len(data["all_recommendations"]) > 1:
         result += "\n\n다른 추천메뉴:"
         for food in data["all_recommendations"][1:]:
-            result += f"\n• {food.get('name', '')} - {food.get('description', '')}"
+            result += f"\n• {food.metadata.get('name', '')} - {food.metadata.get('menu', '')}"
 
     return result
 
@@ -191,7 +191,7 @@ def format_recommendation(category: str, data: Dict) -> str:
     formatters = {
         "도서": format_book_recommendation,
         "음악": format_music_recommendation,
-        "식사": format_food_recommendation
+        "음식": format_food_recommendation
     }
 
     # 도서 

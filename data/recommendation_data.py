@@ -114,7 +114,7 @@ FOOD_DATA = {
         {"name": "따뜻한 수프", "description": "마음을 진정시키는 따뜻한 한 그릇", "category": "양식"},
         {"name": "바나나", "description": "세로토닌을 높여주는 과일", "category": "과일"},
         {"name": "허브티", "description": "긴장을 완화시켜주는 차", "category": "음료"},
-        {"name": "아보카도 토스트", "description": "건강하고 포만감 있는 식사", "category": "브런치"},
+        {"name": "아보카도 토스트", "description": "건강하고 포만감 있는 음식", "category": "브런치"},
     ]
 }
 
@@ -123,7 +123,7 @@ def get_recommendation_data(emotion: str, category: str):
     data_map = {
         "도서": BOOK_DATA,
         "음악": MUSIC_DATA,
-        "식사": FOOD_DATA
+        "음식": FOOD_DATA
     }
 
     data_source = data_map.get(category, {})
