@@ -63,15 +63,15 @@ BE/
 │   └── recommendation_data.py # 추천 데이터
 │
 ├── data2/                     # ChromaDB 입력 데이터 (JSON)
-│   ├── anger.json             # 분노 감정 도서/음악 데이터
-│   ├── anxiety.json           # 불안 감정 도서/음악 데이터
-│   ├── excitement.json        # 설렘 감정 도서/음악 데이터
-│   ├── joy.json               # 기쁨 감정 도서/음악 데이터
-│   ├── normal.json            # 보통 감정 도서/음악 데이터
-│   └── sadness.json           # 슬픔 감정 도서/음악 데이터
+│   ├── anger.json             # 분노 감정 도서/음악/음식 데이터
+│   ├── anxiety.json           # 불안 감정 도서/음악/음식 데이터
+│   ├── excitement.json        # 설렘 감정 도서/음악/음식 데이터
+│   ├── joy.json               # 기쁨 감정 도서/음악/음식 데이터
+│   ├── normal.json            # 보통 감정 도서/음악/음식 데이터
+│   └── sadness.json           # 슬픔 감정 도서/음악/음식 데이터
 │
 ├── scripts/                   # 유틸리티 스크립트
-│   └── mk_data_db.py          # ChromaDB 벡터 DB 생성 스크립트 (4305개 문서)
+│   └── mk_data_db.py          # ChromaDB 벡터 DB 생성 스크립트 (4345개 문서)
 │
 └── prompt/                    # 프롬프트 템플릿
     ├── __init__.py
@@ -147,7 +147,7 @@ BE/
 ### 2. AI 모듈 분리
 - **ai_core/**: AI 기능만 독립적으로 관리
 - LangChain 기반 프롬프트 템플릿 중앙화
-- ChromaDB 벡터 DB로 RAG 기반 추천 (4305개 문서)
+- ChromaDB 벡터 DB로 RAG 기반 추천 (4345개 문서: 도서 + 음악 + 음식)
 - AI 대화와 DB 저장 완전 통합
 - 패키지 구조로 명확한 의존성
 - 테스트 및 확장 용이
@@ -189,7 +189,8 @@ from data.recommendation_data import RECOMMENDATIONS
 #   "emotion": "joy",
 #   "emotion_kr": "기쁨",
 #   "books": [...],
-#   "musics": [...]
+#   "musics": [...],
+#   "foods": [...]
 # }
 
 # 2. 벡터 DB 생성 스크립트 실행
@@ -198,7 +199,12 @@ python scripts/mk_data_db.py
 python -m scripts.mk_data_db
 
 # 생성 위치: ai_core/vector_db/chroma_vectordb/
-# 총 4305개 문서 생성됨
+# 총 4345개 문서 생성됨 (도서 + 음악 + 음식)
+#
+# 스크립트 처리:
+# - books 배열 → category="도서" Document 생성
+# - musics 배열 → category="음악" Document 생성
+# - foods 배열 → category="음식" Document 생성
 ```
 
 ## 개발 가이드
