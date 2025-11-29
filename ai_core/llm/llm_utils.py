@@ -282,14 +282,18 @@ empathetic_prompt = ChatPromptTemplate.from_messages([
 empathetic_chain = empathetic_prompt | empathetic_llm
 
 # 🔹 공감 기능 강화된 응답 함수
-def generate_empathetic_response(character: str, user_sentence: str, user_emotion: str, chat_history: list[dict] = None) -> str:
+def generate_empathetic_response(character: str, user_sentence: str, user_emotion: str, chat_history: list[dict] = None, nick_name: str = None) -> str:
     """
     사용자의 말에 깊이 공감하는 응답을 생성합니다.
     """
 
     # 캐릭터 프롬프트 가져오기
-    # 강아지 -> 강아지 프롬프트 
+    # 강아지 -> 강아지 프롬프트
     character_prompt = get_character_prompt(character)
+
+    # 닉네임이 제공되면 프롬프트에 추가
+    if nick_name:
+        character_prompt += f"\n\n사용자의 닉네임은 '{nick_name}'입니다. 대화할 때 자연스럽게 닉네임을 불러주세요."
 
     lc_history = to_langchain_history(chat_history or [])
     '''

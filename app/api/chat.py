@@ -123,7 +123,8 @@ async def chat(
             character=character_korean,
             user_sentence=request.sentence,
             user_emotion=emotion,
-            chat_history=chat_history
+            chat_history=chat_history,
+            nick_name=user.nick_name  # 닉네임 전달
         )
 
         # assistant의 문장 chat_history에 저장
