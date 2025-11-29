@@ -293,7 +293,7 @@ def generate_empathetic_response(character: str, user_sentence: str, user_emotio
 
     # 닉네임이 제공되면 프롬프트에 추가
     if nick_name:
-        character_prompt += f"\n\n사용자의 닉네임은 '{nick_name}'입니다. 대화할 때 자연스럽게 닉네임을 불러주세요."
+        character_prompt += f"\n\n사용자의 닉네임은 '{nick_name}'입니다. 대화할 때 '{nick_name}님'처럼 존칭을 붙여서 자연스럽게 불러주세요."
 
     lc_history = to_langchain_history(chat_history or [])
     '''
