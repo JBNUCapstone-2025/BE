@@ -47,8 +47,8 @@ empathetic_llm = ChatOpenAI(
 
 # extract_recent_emotion()
 recent_emotion_llm = ChatOpenAI(
-    model = "gpt-4o-mini",
-    temperature = 0.3
+    model = "ft:gpt-4o-mini-2024-07-18:personal:emotion:CktCR1Hx",
+    temperature = 0
 )
 
 # generate_recommendation_response()
@@ -101,15 +101,30 @@ def extract_emotion(user_input: str) -> str:
 
 recent_emotion_prompt = ChatPromptTemplate.from_messages([
     ("system", """
-    다음은 사용자가 작성한 대화 내역입니다.
-    전체 대화를 읽고, 가장 최근에 표현된 감정을 파악해주세요.
+    You are an assistant that classifies the writer's primary emotion.
 
-    중요한 규칙:
-    1. "고마워", "감사", "ㅋㅋ", "ㅎㅎ" 같은 짧은 인사말이나 반응은 무시하세요.
-    2. 실제 감정이 담긴 의미 있는 문장만 분석하세요.
-    3. 여러 감정이 섞여 있다면, 시간 순서상 가장 마지막에 나타난 감정을 선택하세요.
-    4. '기쁨', '설렘', '보통', '슬픔', '분노' '불안' 중에서 하나만 골라주세요.
-    5. 다른 설명 없이 감정 단어만 응답해야 합니다.
+    TASK:
+    1. Identify the writer's dominant emotion from the text.
+    2. First determine the emotion using the following valid English emotion labels:
+    sadness, joy, love, anger, fear, surprise
+    3. Then convert the detected English emotion into the corresponding Korean emotion label.
+
+    RULES:
+    - Focus only on the writer's emotional state.
+    - Ignore topics, opinions, and moral/political content.
+    - Output exactly one Korean emotion word.
+
+    MAPPING (English → Korean):
+    - sadness → 슬픔
+    - joy → 기쁨
+    - love → 설렘
+    - anger → 분노
+    - fear → 불안
+    - surprise → 보통
+
+    OUTPUT:
+    Return only one Korean emotion word from:
+    기쁨, 설렘, 보통, 슬픔, 분노, 불안
 """), ("user", """다음은 사용자가 작성한 대화 내역입니다.
        
        {conversation_history}
